@@ -1,0 +1,325 @@
+#!/bin/bash
+
+# Defines
+letsEncryptExec=/opt/letsencrypt/letsencrypt-auto
+adminEmail=root@yourserver.com
+
+### DO NOT EDIT AFTER THIS LINE ###
+# Vars
+sslSecured=0
+
+serverName=
+userName=
+
+# Standard user fail protection
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+function help()
+{
+    echo -e "Usage: $0 {add|remove} [-h|--help]\n"
+    echo "  add:            Add a virtual server, and create an user"
+    echo "  remove:         Remove an existing virtual server from apache."
+    exit 1
+}
+
+function helpAdd()
+{
+    echo -e "Usage: $0 add -s|--server <name> [--ssl]\n"
+    echo "  -s|--server:    Specify the domain name, for aliases you can seprate them by commas"
+    echo "                  or specify a new --server <name>"
+    echo "  --ssl:          If specified, a Let's Encrypt certificate will be generated and will"
+    echo "                  be applied to the virtual server"
+    exit 1
+}
+function helpRemove()
+{
+    echo -e "Usage: $0 remove -s|--server <name>\n"
+    echo "  -s|--server:    Specify the creation domain name, not an alias."
+    exit 1
+}
+
+function createHost()
+{
+    # If server is not configured, launch creation
+    if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
+    then
+        if [ ! -f /home/$userName/.wwwUser ]
+        then
+            # Add an user
+            echo "Creating new user '$userName'..."
+            useradd $userName --create-home --system -s /usr/sbin/nologin
+
+            # Adding a lock file in user dir to protect other users from removing
+            echo "Locking dir for '$userName'..."
+            touch /home/$userName/.wwwUser
+
+            # Making dirs
+            echo "   + /home/$userName/www"
+            mkdir /home/$userName/www
+            echo "   + /home/$userName/log"
+            mkdir /home/$userName/log
+
+            # Setting up Virtual Host
+            if [ $sslSecured == 1 ]
+            then
+                echo -e "\nGenerating SSL Let's Encrypt Certificate..."
+                echo "   * Setting up web config for Let's Encrypt activation.."
+                echo "    <VirtualHost *:80>
+                    ServerAdmin $adminEmail
+                    DocumentRoot /home/$userName/www/
+
+                    ServerName $serverName
+                    ServerAlias $serverAlias
+                </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+                echo "   * Reloading apache.."
+                service apache2 reload
+                echo "   *** Generating certificate ***"
+                if [ ! -z $serverAlias ] # Check if aliases
+                then
+                    $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName -d $serverAlias
+                else
+                    $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName
+                fi
+
+                # Touching file to know we have an ssl cert
+                touch /home/$userName/.sslCert
+
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "    <Directory /home/$userName/www/>
+                    Options Indexes FollowSymLinks
+                    AllowOverride None
+                    Require all granted
+               </Directory>
+               <VirtualHost *:80>
+                    ServerAdmin $adminEmail
+                    DocumentRoot /home/$userName/www/
+
+                    ServerName $serverName
+                    ServerAlias $serverAlias
+
+                    ErrorLog /home/$userName/log/error.log
+                    CustomLog /home/$userName/log/access.log combined
+
+                    <IfModule mod_rewrite.c>
+                        RewriteEngine on
+                        RewriteCond %{HTTPS} off
+                        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+                    </IfModule>
+                </VirtualHost>
+                <IfModule mod_ssl.c>
+                    <VirtualHost *:443>
+                        ServerAdmin $adminEmail
+                        DocumentRoot /home/$userName/www/
+
+                        ServerName $serverName
+                        ServerAlias $serverAlias
+
+                        ErrorLog /home/$userName/log/error.log
+                        CustomLog /home/$userName/log/access.log combined
+
+                        <IfModule mod_php5.c>
+                            php_admin_value open_basedir /home/$userName/www/:/tmp/
+                        </IfModule>
+
+                        <IfModule mod_suphp.c>
+                            suPHP_ConfigPath /home/$userName/
+                        </IfModule>
+
+                        SSLEngine on
+                        SSLProtocol all -SSLv2 -SSLv3
+                        SSLHonorCipherOrder on
+                        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+                        SSLCertificateFile /etc/letsencrypt/live/$serverName/cert.pem
+                        SSLCertificateKeyFile /etc/letsencrypt/live/$serverName/privkey.pem
+                        SSLCertificateChainFile /etc/letsencrypt/live/$serverName/chain.pem
+                        SSLOptions +StdEnvVars +ExportCertData
+                    </VirtualHost>
+                </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+            else
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "    <Directory /home/$userName/www/>
+                    Options Indexes FollowSymLinks
+                    AllowOverride None
+                    Require all granted
+               </Directory>
+               <VirtualHost *:80>
+                    ServerAdmin $adminEmail
+                    DocumentRoot /home/$userName/www/
+
+                    ServerName $serverName
+                    ServerAlias $serverAlias
+
+                    ErrorLog /home/$userName/log/error.log
+                    CustomLog /home/$userName/log/access.log combined
+
+                    <IfModule mod_php5.c>
+                        php_admin_value open_basedir /home/$userName/www/:/tmp/
+                    </IfModule>
+
+                    <IfModule mod_suphp.c>
+                        suPHP_ConfigPath /home/$userName/
+                    </IfModule>
+                </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+            fi
+
+            # Creating default served file
+            echo "   + Creating default page the user ~/www/ dir"
+            cp index.php /home/$userName/www/index.php
+
+            # Downloading default php.ini
+            echo "   + Downloading php.ini-developpement to the ~/ user dir"
+            cp php.ini-production /home/$userName/php.ini
+
+            # Fixing permissions
+            echo -n "Fixing permissions for '/home/$userName/'..."
+            chmod 755 /home/$userName/ -R
+            echo -n " Fixed permissions to '755'..."
+            chown $userName:$userName /home/$userName/ -R
+            echo " Fixed owner to '$userName'"
+
+            # Creating new ftp user
+            echo "Adding ftp user for '$userName'..."
+            ( echo $userPassword ; echo $userPassword ) | pure-pw useradd $userName -u $userName -d /home/$userName/www/ -m > /dev/null
+            pure-pw mkdb
+            service pure-ftpd restart
+        fi
+    fi
+}
+
+function removeHost
+{
+    echo "Checking if vhost is existing..."
+    if [ -f /etc/apache2/sites-enabled/$serverName.conf ]
+    then
+        if [ -f /home/$userName/.wwwUser ]
+        then
+            # Revoking ssl cert
+            if [ -f /home/$userName/.sslCert ]
+            then
+                echo "   - Revoking certificate for '$serverName'."
+                $letsEncryptExec revoke --cert-path /etc/letsencrypt/live/$serverName/fullchain.pem
+            fi
+
+            # Removing ftp user
+            pure-pw userdel $userName -m
+            pure-pw mkdb
+            service pure-ftpd restart
+            echo "   - Ftp user '$userName' deleted."
+
+            # Removing unix user
+            userdel $userName -r
+            echo "   - User '$userName' deleted."
+
+            # Deleting apache virtual server
+            rm -f /etc/apache2/sites-enabled/$serverName.conf
+            echo "   - Configuration for '$serverName' removed in apache directory."
+        else
+            echo "Warning: Prevented non-vhost user delete !"
+            exit 1
+        fi
+    else
+        echo "Warning: '$serverName' is not a valid server name..."
+        exit 1
+    fi
+}
+
+# Parsing config
+while [ ! -z $1 ]
+do
+    case $1 in
+        add)
+            while [ ! -z $1 ]
+            do
+                shift
+                case $1 in
+                    -h | --help)
+                        helpAdd
+                    ;;
+                    -s | --server)
+                        shift
+                        if [ -z $serverName ]
+                        then
+                            serverName=$1
+                        else
+                            if [ -z $serverAlias ]
+                            then
+                                serverAlias=$1
+                            else
+                                serverAlias="${serverAlias},$1"
+                            fi
+                        fi
+                    ;;
+                    --ssl)
+                        sslSecured=1
+                esac
+            done
+
+            # Check if there is a server name
+            if [ -z $serverName ]
+            then
+                echo "Error: No server name specified. Try '$0 add --help'"
+                exit 1
+            fi
+
+            # If all ok, create $userName var
+            userName=$(echo $serverName | tr . -)
+            userPassword=$(openssl rand -base64 12)
+            createHost
+
+            # Applying conf
+            echo "Reloading apache config"
+            service apache2 reload
+
+            echo -e "\nCreating file -> /home/$userName/userPass.json to store ftp access."
+            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userPass.json
+            exit 0
+        ;;
+        remove)
+            while [ ! -z $1 ]
+            do
+                shift
+                case $1 in
+                    -h | --help)
+                        helpRemove
+                    ;;
+                    -s | --server)
+                        shift
+                        if [ -z $serverName ]
+                        then
+                            serverName=$1
+                        else
+                            echo "Error: You can only specify one server name to remove."
+                            exit 1
+                        fi
+                esac
+            done
+
+            # Check if there is a server name
+            if [ -z $serverName ]
+            then
+                echo "Error: No server name specified. Try '$0 remove --help'"
+                exit 1
+            fi
+
+            # If all ok, create $userName var and remove stuff
+            userName=$(echo $serverName | tr . -)
+            removeHost
+
+            # Applying conf
+            echo "Reloading apache config"
+            service apache2 reload
+
+            echo "Done."
+            exit 0
+        ;;
+        -h | --help)
+            break
+    esac
+    shift
+done
+
+# If loop broken call help()
+help
