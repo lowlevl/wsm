@@ -2,6 +2,7 @@
 
 # Defines
 letsEncryptExec=letsencrypt
+letsEncryptDir=/etc/letsencrypt
 adminEmail=root@yourserver.com
 
 # Vars
@@ -136,9 +137,9 @@ function _createHost()
                         SSLProtocol all -SSLv2 -SSLv3
                         SSLHonorCipherOrder on
                         SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-                        SSLCertificateFile /etc/letsencrypt/live/$serverName/cert.pem
-                        SSLCertificateKeyFile /etc/letsencrypt/live/$serverName/privkey.pem
-                        SSLCertificateChainFile /etc/letsencrypt/live/$serverName/chain.pem
+                        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+                        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+                        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
                         SSLOptions +StdEnvVars +ExportCertData
                     </VirtualHost>
                 </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
@@ -200,11 +201,15 @@ function _removeHost
     then
         if [ -f /home/$userName/.wwwUser ]
         then
-            # Revoking ssl cert
+            # Revoking and removing ssl cert
             if [ -f /home/$userName/.sslCert ]
             then
                 echo "   - Revoking certificate for '$serverName'."
-                $letsEncryptExec revoke --cert-path /etc/letsencrypt/live/$serverName/fullchain.pem
+                $letsEncryptExec revoke --cert-path $letsEncryptDir/live/$serverName/fullchain.pem
+                echo "   - Removing certificate and renewal configuration for '$serverName'."
+                rm -rf $letsEncryptDir/live/$serverName
+                rm -rf $letsEncryptDir/archive/$serverName
+                rm -rf $letsEncryptDir/renewal/$serverName.conf
             fi
 
             # Removing ftp user
