@@ -4,7 +4,6 @@
 letsEncryptExec=letsencrypt
 adminEmail=root@yourserver.com
 
-### DO NOT EDIT AFTER THIS LINE ###
 # Vars
 sslSecured=0
 
@@ -17,7 +16,7 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-function help()
+function _help()
 {
     echo -e "Usage: $0 {add|remove} [-h|--help]\n"
     echo "  add:            Add a virtual server, and create an user"
@@ -25,7 +24,7 @@ function help()
     exit 1
 }
 
-function helpAdd()
+function _helpAdd()
 {
     echo -e "Usage: $0 add -s|--server <name> [--ssl]\n"
     echo "  -s|--server:    Specify the domain name, for aliases you can seprate them by commas"
@@ -34,14 +33,14 @@ function helpAdd()
     echo "                  be applied to the virtual server"
     exit 1
 }
-function helpRemove()
+function _helpRemove()
 {
     echo -e "Usage: $0 remove -s|--server <name>\n"
     echo "  -s|--server:    Specify the creation domain name, not an alias."
     exit 1
 }
 
-function createHost()
+function _createHost()
 {
     # If server is not configured, launch creation
     if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
@@ -194,7 +193,7 @@ function createHost()
     fi
 }
 
-function removeHost
+function _removeHost
 {
     echo "Checking if vhost is existing..."
     if [ -f /etc/apache2/sites-enabled/$serverName.conf ]
@@ -241,7 +240,7 @@ do
                 shift
                 case $1 in
                     -h | --help)
-                        helpAdd
+                        _helpAdd
                     ;;
                     -s | --server)
                         shift
@@ -272,7 +271,7 @@ do
             # If all ok, create $userName var
             userName=$(echo $serverName | tr . -)
             userPassword=$(openssl rand -base64 12)
-            createHost
+            _createHost
 
             # Applying conf
             echo "Reloading apache config"
@@ -288,7 +287,7 @@ do
                 shift
                 case $1 in
                     -h | --help)
-                        helpRemove
+                        _helpRemove
                     ;;
                     -s | --server)
                         shift
@@ -311,7 +310,7 @@ do
 
             # If all ok, create $userName var and remove stuff
             userName=$(echo $serverName | tr . -)
-            removeHost
+            _removeHost
 
             # Applying conf
             echo "Reloading apache config"
@@ -326,5 +325,5 @@ do
     shift
 done
 
-# If loop broken call help()
-help
+# If loop broken call _help()
+_help
