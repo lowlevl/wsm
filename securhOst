@@ -293,8 +293,8 @@ do
             echo "Reloading apache config"
             service apache2 reload
 
-            echo -e "\nCreating file -> /home/$userName/userPass.json to store ftp access."
-            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userPass.json
+            echo -e "Storing ftp login and password in '/home/$userName/userPass'"
+            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userPass
             exit 0
         ;;
         remove)
