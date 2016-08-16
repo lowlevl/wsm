@@ -65,32 +65,7 @@ function _createHost()
             # Setting up Virtual Host
             if [ $sslSecured == 1 ]
             then
-                echo -e "\nGenerating SSL Let's Encrypt Certificate..."
-                echo "   * Setting up web config for Let's Encrypt activation.."
-                echo "    <Directory /home/$userName/www/>
-                    Options Indexes FollowSymLinks
-                    AllowOverride None
-                    Require all granted
-               </Directory>
-               <VirtualHost *:80>
-                    ServerAdmin $adminEmail
-                    DocumentRoot /home/$userName/www/
-
-                    ServerName $serverName
-                    ServerAlias $serverAlias
-                </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
-                echo "   * Reloading apache.."
-                service apache2 reload
-                echo "   *** Generating certificate ***"
-                if [ ! -z $serverAlias ] # Check if aliases
-                then
-                    $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName -d $serverAlias
-                else
-                    $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName
-                fi
-
-                # Touching file to know we have an ssl cert
-                touch /home/$userName/.sslCert
+                _addSSL
 
                 echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
                 echo "    <Directory /home/$userName/www/>
@@ -204,23 +179,18 @@ function _removeHost
             # Revoking and removing ssl cert
             if [ -f /home/$userName/.sslCert ]
             then
-                echo "   - Revoking certificate for '$serverName'."
-                $letsEncryptExec revoke --cert-path $letsEncryptDir/live/$serverName/fullchain.pem
-                echo "   - Removing certificate and renewal configuration for '$serverName'."
-                rm -rf $letsEncryptDir/live/$serverName
-                rm -rf $letsEncryptDir/archive/$serverName
-                rm -rf $letsEncryptDir/renewal/$serverName.conf
+                _removeSSL
             fi
 
             # Removing ftp user
             pure-pw userdel $userName -m
             pure-pw mkdb
             service pure-ftpd restart
-            echo "   - Ftp user '$userName' deleted."
+            echo "   - FTP user '$userName' deleted."
 
             # Removing unix user
             userdel $userName -r
-            echo "   - User '$userName' deleted."
+            echo "   - Unix user '$userName' deleted."
 
             # Deleting apache virtual server
             rm -f /etc/apache2/sites-enabled/$serverName.conf
@@ -233,6 +203,47 @@ function _removeHost
         echo "Warning: '$serverName' is not a valid server name..."
         exit 1
     fi
+}
+
+function _addSSL()
+{
+    echo -e "\nGenerating SSL Let's Encrypt Certificate..."
+    echo "   * Setting up web config for Let's Encrypt activation.."
+    echo "    <Directory /home/$userName/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    <VirtualHost *:80>
+        ServerAdmin $adminEmail
+        DocumentRoot /home/$userName/www/
+
+        ServerName $serverName
+	ServerAlias $serverAlias
+    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+
+    echo "   * Reloading apache.."
+    service apache2 reload
+    echo "   *** Generating certificate ***"
+    if [ ! -z $serverAlias ] # Check if aliases
+    then
+        $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName -d $serverAlias
+    else
+        $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName
+    fi
+
+    # Touching file to know we have an ssl cert
+    touch /home/$userName/.sslCert
+}
+
+function _removeSSL()
+{
+    echo "   - Revoking SSL Let's Encrypt Certificate for '$serverName'..."
+    $letsEncryptExec revoke --cert-path $letsEncryptDir/live/$serverName/fullchain.pem
+    echo -e "   - Removing certificate and renewal configuration for '$serverName'...\n"
+    rm -rf $letsEncryptDir/live/$serverName
+    rm -rf $letsEncryptDir/archive/$serverName
+    rm -rf $letsEncryptDir/renewal/$serverName.conf
 }
 
 # Parsing config
