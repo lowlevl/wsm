@@ -171,9 +171,10 @@ function _createHost()
 
 function _removeHost
 {
-    echo "Checking if vhost is existing..."
+    echo -n "Checking if vhost is existing... "
     if [ -f /etc/apache2/sites-enabled/$serverName.conf ]
     then
+	echo "Ok"
         if [ -f /home/$userName/.wwwUser ]
         then
             # Revoking and removing ssl cert
@@ -182,6 +183,7 @@ function _removeHost
                 _removeSSL
             fi
 
+            echo -e "\nRemoving user and files..."
             # Removing ftp user
             pure-pw userdel $userName -m
             pure-pw mkdb
@@ -200,6 +202,7 @@ function _removeHost
             exit 1
         fi
     else
+	echo "Failed"
         echo "Warning: '$serverName' is not a valid server name..."
         exit 1
     fi
@@ -238,9 +241,10 @@ function _addSSL()
 
 function _removeSSL()
 {
+    echo -e "\nCleaning up SSL certificates..."
     echo "   - Revoking SSL Let's Encrypt Certificate for '$serverName'..."
     $letsEncryptExec revoke --cert-path $letsEncryptDir/live/$serverName/fullchain.pem
-    echo -e "   - Removing certificate and renewal configuration for '$serverName'...\n"
+    echo "   - Removing certificate and renewal configuration for '$serverName'..."
     rm -rf $letsEncryptDir/live/$serverName
     rm -rf $letsEncryptDir/archive/$serverName
     rm -rf $letsEncryptDir/renewal/$serverName.conf
@@ -295,6 +299,8 @@ do
 
             echo -e "Storing ftp login and password in '/home/$userName/userPass'"
             echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userPass
+
+            echo "Done."
             exit 0
         ;;
         remove)
