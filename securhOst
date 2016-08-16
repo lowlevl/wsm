@@ -146,17 +146,17 @@ function _createHost()
             fi
 
             # Creating default served file
-            echo "   + Creating default page the user ~/www/ dir"
+            echo "   + Moving default page to the user ~/www/ dir"
             cp index.php /home/$userName/www/index.php
 
             # Downloading default php.ini
-            echo "   + Downloading php.ini-developpement to the ~/ user dir"
+            echo "   + Moving default php.ini-developpement to the ~/ user dir"
             cp php.ini-production /home/$userName/php.ini
 
             # Fixing permissions
             echo -n "Fixing permissions for '/home/$userName/'..."
             chmod 755 /home/$userName/ -R
-            echo -n " Fixed permissions to '755'..."
+            echo " Fixed permissions to '755'..."
             chown $userName:$userName /home/$userName/ -R
             echo " Fixed owner to '$userName'"
 
