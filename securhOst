@@ -44,8 +44,10 @@ function _helpRemove()
 function _createHost()
 {
     # If server is not configured, launch creation
+    echo -n "Checking if vhost is existing... "
     if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
     then
+	echo "No"
         if [ ! -f /home/$userName/.wwwUser ]
         then
             # Add an user
@@ -68,81 +70,79 @@ function _createHost()
                 _addSSL
 
                 echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                echo "    <Directory /home/$userName/www/>
-                    Options Indexes FollowSymLinks
-                    AllowOverride None
-                    Require all granted
-               </Directory>
-               <VirtualHost *:80>
-                    ServerAdmin $adminEmail
-                    DocumentRoot /home/$userName/www/
+                echo "<Directory /home/$userName/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot /home/$userName/www/
 
-                    ServerName $serverName
-                    ServerAlias $serverAlias
+    ServerName $serverName
+    ServerAlias $serverAlias
 
-                    ErrorLog /home/$userName/log/error.log
-                    CustomLog /home/$userName/log/access.log combined
+    ErrorLog /home/$userName/log/error.log
+    CustomLog /home/$userName/log/access.log combined
 
-                    <IfModule mod_rewrite.c>
-                        RewriteEngine on
-                        RewriteCond %{HTTPS} off
-                        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-                    </IfModule>
-                </VirtualHost>
-                <IfModule mod_ssl.c>
-                    <VirtualHost *:443>
-                        ServerAdmin $adminEmail
-                        DocumentRoot /home/$userName/www/
+    <IfModule mod_rewrite.c>
+        RewriteEngine on
+        RewriteCond %{HTTPS} off
+        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+    </IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+    <VirtualHost *:443>
+        ServerAdmin $adminEmail
+        DocumentRoot /home/$userName/www/
 
-                        ServerName $serverName
-                        ServerAlias $serverAlias
+        ServerName $serverName
+        ServerAlias $serverAlias
 
-                        ErrorLog /home/$userName/log/error.log
-                        CustomLog /home/$userName/log/access.log combined
+        ErrorLog /home/$userName/log/error.log
+        CustomLog /home/$userName/log/access.log combined
 
-                        <IfModule mod_php5.c>
-                            php_admin_value open_basedir /home/$userName/www/:/tmp/
-                        </IfModule>
+        <IfModule php5_module>
+            php_admin_value open_basedir /home/$userName/www/:/tmp/
+        </IfModule>
+        <IfModule php7_module>
+            php_admin_value open_basedir /home/$userName/www/:/tmp/
+        </IfModule>
 
-                        <IfModule mod_suphp.c>
-                            suPHP_ConfigPath /home/$userName/
-                        </IfModule>
-
-                        SSLEngine on
-                        SSLProtocol all -SSLv2 -SSLv3
-                        SSLHonorCipherOrder on
-                        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-                        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-                        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-                        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-                        SSLOptions +StdEnvVars +ExportCertData
-                    </VirtualHost>
-                </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+        SSLEngine on
+        SSLProtocol all -SSLv2 -SSLv3
+        SSLHonorCipherOrder on
+        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+        SSLOptions +StdEnvVars +ExportCertData
+    </VirtualHost>
+</IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
             else
                 echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                echo "    <Directory /home/$userName/www/>
-                    Options Indexes FollowSymLinks
-                    AllowOverride None
-                    Require all granted
-               </Directory>
-               <VirtualHost *:80>
-                    ServerAdmin $adminEmail
-                    DocumentRoot /home/$userName/www/
+                echo "<Directory /home/$userName/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot /home/$userName/www/
 
-                    ServerName $serverName
-                    ServerAlias $serverAlias
+    ServerName $serverName
+    ServerAlias $serverAlias
 
-                    ErrorLog /home/$userName/log/error.log
-                    CustomLog /home/$userName/log/access.log combined
+    ErrorLog /home/$userName/log/error.log
+    CustomLog /home/$userName/log/access.log combined
 
-                    <IfModule mod_php5.c>
-                        php_admin_value open_basedir /home/$userName/www/:/tmp/
-                    </IfModule>
-
-                    <IfModule mod_suphp.c>
-                        suPHP_ConfigPath /home/$userName/
-                    </IfModule>
-                </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+    <IfModule php5_module>
+        php_admin_value open_basedir /home/$userName/www/:/tmp/
+    </IfModule>
+    <IfModule php7_module>
+        php_admin_value open_basedir /home/$userName/www/:/tmp/
+    </IfModule>
+</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
             fi
 
             # Creating default served file
@@ -166,6 +166,10 @@ function _createHost()
             pure-pw mkdb
             service pure-ftpd restart
         fi
+    else
+	echo "Yes"
+        echo "Warning: '$serverName' is already configured..."
+        exit 1
     fi
 }
 
@@ -212,18 +216,18 @@ function _addSSL()
 {
     echo -e "\nGenerating SSL Let's Encrypt Certificate..."
     echo "   * Setting up web config for Let's Encrypt activation.."
-    echo "    <Directory /home/$userName/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-    <VirtualHost *:80>
-        ServerAdmin $adminEmail
-        DocumentRoot /home/$userName/www/
+    echo "<Directory /home/$userName/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot /home/$userName/www/
 
-        ServerName $serverName
-	ServerAlias $serverAlias
-    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+    ServerName $serverName
+    ServerAlias $serverAlias
+</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
 
     echo "   * Reloading apache.."
     service apache2 reload
