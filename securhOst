@@ -102,13 +102,6 @@ function _createHost()
         ErrorLog /home/$userName/log/error.log
         CustomLog /home/$userName/log/access.log combined
 
-        <IfModule php5_module>
-            php_admin_value open_basedir /home/$userName/www/:/tmp/
-        </IfModule>
-        <IfModule php7_module>
-            php_admin_value open_basedir /home/$userName/www/:/tmp/
-        </IfModule>
-
         SSLEngine on
         SSLProtocol all -SSLv2 -SSLv3
         SSLHonorCipherOrder on
@@ -136,22 +129,12 @@ function _createHost()
     ErrorLog /home/$userName/log/error.log
     CustomLog /home/$userName/log/access.log combined
 
-    <IfModule php5_module>
-        php_admin_value open_basedir /home/$userName/www/:/tmp/
-    </IfModule>
-    <IfModule php7_module>
-        php_admin_value open_basedir /home/$userName/www/:/tmp/
-    </IfModule>
 </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
             fi
 
             # Creating default served file
             echo "   + Moving default page to the user ~/www/ dir"
             cp index.php /home/$userName/www/index.php
-
-            # Downloading default php.ini
-            echo "   + Moving default php.ini-developpement to the ~/ user dir"
-            cp php.ini-production /home/$userName/php.ini
 
             # Fixing permissions
             echo -n "Fixing permissions for '/home/$userName/'..."
@@ -195,7 +178,7 @@ function _removeHost
             echo "   - FTP user '$userName' deleted."
 
             # Removing unix user
-            userdel $userName -r
+            userdel $userName -rf
             echo "   - Unix user '$userName' deleted."
 
             # Deleting apache virtual server
