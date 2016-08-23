@@ -5,11 +5,11 @@ letsEncryptExec=letsencrypt
 letsEncryptDir=/etc/letsencrypt
 adminEmail=root@yourserver.com
 
+# DO NOT EDIT AFTER HERE #
+
 # Vars
 sslSecured=0
-
-serverName=
-userName=
+chrootHost=1
 
 # Standard user fail protection
 if [ "$(id -u)" != "0" ]; then
@@ -27,11 +27,10 @@ function _help()
 
 function _helpAdd()
 {
-    echo -e "Usage: $0 add -s|--server <name> [--ssl]\n"
-    echo "  -s|--server:    Specify the domain name, for aliases you can seprate them by commas"
-    echo "                  or specify a new --server <name>"
-    echo "  --ssl:          If specified, a Let's Encrypt certificate will be generated and will"
-    echo "                  be applied to the virtual server"
+    echo -e "Usage: $0 add -s|--server <name> [--ssl] [--no-chroot]\n"
+    echo "  -s|--server:    Specify the domain name, for aliases you can seprate them by commas or specify a new --server <name>"
+    echo "  --ssl:          If specified, a Let's Encrypt certificate will be generated and will be applied to the virtual server"
+    echo "  --no-chroot:    Do not chroot the virtual server, only for websites who uses external programs"
     exit 1
 }
 function _helpRemove()
@@ -102,6 +101,23 @@ function _createHost()
         ErrorLog /home/$userName/log/error.log
         CustomLog /home/$userName/log/access.log combined
 
+        <IfModule mod_fastcgi.c>
+            AddHandler php-fcgi-$userName .php
+            Action php-fcgi-$userName /php-fcgi-$userName
+            Alias /php-fcgi-$userName /usr/lib/cgi-bin/php-fcgi-$userName
+            FastCgiExternalServer /usr/lib/cgi-bin/php-fcgi-$userName -socket /run/php/php-fpm.$userName.sock -pass-header Authorization
+
+            <Directory /usr/lib/cgi-bin>
+                Require all granted
+            </Directory>
+        </IfModule>
+
+        <IfModule mod_fastcgi.c>
+            <FilesMatch .+\.ph(p[345]?|t|tml)$>
+       	        SetHandler php-fcgi-$userName
+    	    </FilesMatch>
+        </IfModule>
+
         SSLEngine on
         SSLProtocol all -SSLv2 -SSLv3
         SSLHonorCipherOrder on
@@ -129,25 +145,99 @@ function _createHost()
     ErrorLog /home/$userName/log/error.log
     CustomLog /home/$userName/log/access.log combined
 
+    <IfModule mod_fastcgi.c>
+        AddHandler php-fcgi-$userName .php
+        Action php-fcgi-$userName /php-fcgi-$userName
+        Alias /php-fcgi-$userName /usr/lib/cgi-bin/php-fcgi-$userName
+        FastCgiExternalServer /usr/lib/cgi-bin/php-fcgi-$userName -socket /run/php/php-fpm.$userName.sock -pass-header Authorization
+
+        <Directory /usr/lib/cgi-bin>
+          Require all granted
+        </Directory>
+    </IfModule>
+
+    <IfModule mod_fastcgi.c>
+        <FilesMatch .+\.ph(p[345]?|t|tml)$>
+            SetHandler php-fcgi-$userName
+        </FilesMatch>
+    </IfModule>
+
 </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+            fi
+
+	    # Configuring CGI
+            echo "Creating php-fpm pool for '$serverName'..."
+            if [ $chrootHost == 1 ]
+            then
+                echo "[$userName]
+
+; Define socket
+listen = /run/php/php-fpm.$userName.sock
+
+; Chrooting dir
+chroot = /home/$userName/www/
+
+; Define env var for this instance
+env[DOCUMENT_ROOT] = /home/$userName/www/
+
+; Default pool settings
+chdir = /
+user = $userName
+group = $userName
+listen.owner = $userName
+listen.group = $userName
+listen.mode = 0666
+pm = ondemand
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3" > /home/$userName/pool.cfg
+            else
+                echo "[$userName]
+
+; Define socket
+listen = /run/php/php-fpm.$userName.sock
+
+; Default pool settings
+chdir = /
+user = $userName
+group = $userName
+listen.owner = $userName
+listen.group = $userName
+listen.mode = 0666
+pm = ondemand
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3" > /home/$userName/pool.cfg
+            fi
+
+            # Checking for PHP-FPM include config
+            if ! grep -qF "include=/home/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
+            then
+                echo "Warning: No include for pools in php-fpm config, automatically adding."
+                sed -i -e 's/.*include=/;&/' -e '/;include=/a include=/home/*/pool.cfg' /etc/php/*/fpm/php-fpm.conf
             fi
 
             # Creating default served file
             echo "   + Moving default page to the user ~/www/ dir"
             cp index.php /home/$userName/www/index.php
 
-            # Fixing permissions
-            echo -n "Fixing permissions for '/home/$userName/'..."
-            chmod 755 /home/$userName/ -R
-            echo " Fixed permissions to '755'..."
-            chown $userName:$userName /home/$userName/ -R
-            echo " Fixed owner to '$userName'"
-
             # Creating new ftp user
             echo "Adding ftp user for '$userName'..."
             ( echo $userPassword ; echo $userPassword ) | pure-pw useradd $userName -u $userName -d /home/$userName/www/ -m > /dev/null
             pure-pw mkdb
             service pure-ftpd restart
+
+            # Creating ftp password file
+            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userpass
+
+            # Fixing permissions
+            echo "Fixing permissions for '/home/$userName/'..."
+            chmod 755 /home/$userName/ -R
+            echo "   * Fixed permissions to '755'..."
+            chown $userName:$userName /home/$userName/ -R
+            echo "   * Fixed owner to '$userName'"
         fi
     else
 	echo "Yes"
@@ -234,7 +324,7 @@ function _removeSSL()
     echo "   - Removing certificate and renewal configuration for '$serverName'..."
     rm -rf $letsEncryptDir/live/$serverName
     rm -rf $letsEncryptDir/archive/$serverName
-    rm -rf $letsEncryptDir/renewal/$serverName.conf
+    rm -f $letsEncryptDir/renewal/$serverName.conf
 }
 
 # Parsing config
@@ -265,6 +355,9 @@ do
                     ;;
                     --ssl)
                         sslSecured=1
+                    ;;
+                    --no-chroot)
+                        chrootHost=0
                 esac
             done
 
@@ -284,9 +377,10 @@ do
             echo "Reloading apache config"
             service apache2 reload
 
-            echo -e "Storing ftp login and password in '/home/$userName/userPass'"
-            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userPass
+            echo "Reloading php-fpm config"
+            service php*-fpm restart
 
+            echo "Stored ftp login and password in '/home/$userName/userpass'"
             echo "Done."
             exit 0
         ;;
@@ -324,6 +418,9 @@ do
             # Applying conf
             echo "Reloading apache config"
             service apache2 reload
+
+            echo "Reloading php-fpm config"
+            service php*-fpm restart
 
             echo "Done."
             exit 0
