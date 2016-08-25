@@ -300,7 +300,7 @@ pm.max_spare_servers = 3" > /home/$userName/pool.cfg
             chown $userName:$userName /home/$userName/* -R
             echo "   * Fixed owner to '$userName'"
 
-            echo "Gaining access to '/home/$userName/www/' to user '$userName'  recursively..."
+            echo "Gaining access to '/home/$userName/www/' to user '$userName' recursively..."
             chmod 755 /home/$userName/www/ -R
             echo "   * Fixed permissions to '755'..."
         fi
