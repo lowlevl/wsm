@@ -63,35 +63,22 @@ function _createHost()
             echo "   + /home/$userName/log"
             mkdir /home/$userName/log
 
-            # Setting up Virtual Host
-            if [ $sslSecured == 1 ]
+            if [ $chrootHost == 1 ]
             then
-                _addSSL
+                # Chroot hosts
+            
+                # Setting up Virtual Host
+                if [ $sslSecured == 1 ]
+                then
+                    _addSSL
 
-                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                echo "<Directory /home/$userName/www/>
-    Options Indexes FollowSymLinks
-    AllowOverride None
-    Require all granted
-</Directory>
-<VirtualHost *:80>
-    ServerAdmin $adminEmail
-    DocumentRoot /home/$userName/www/
-
-    ServerName $serverName
-    ServerAlias $serverAlias
-
-    ErrorLog /home/$userName/log/error.log
-    CustomLog /home/$userName/log/access.log combined
-
-    <IfModule mod_rewrite.c>
-        RewriteEngine on
-        RewriteCond %{HTTPS} off
-        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-    </IfModule>
-</VirtualHost>
-<IfModule mod_ssl.c>
-    <VirtualHost *:443>
+                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                    echo "<Directory /home/$userName/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    <VirtualHost *:80>
         ServerAdmin $adminEmail
         DocumentRoot /home/$userName/www/
 
@@ -101,74 +88,61 @@ function _createHost()
         ErrorLog /home/$userName/log/error.log
         CustomLog /home/$userName/log/access.log combined
 
-        <IfModule mod_fastcgi.c>
-            AddHandler php-fcgi-$userName .php
-            Action php-fcgi-$userName /php-fcgi-$userName
-            Alias /php-fcgi-$userName /usr/lib/cgi-bin/php-fcgi-$userName
-            FastCgiExternalServer /usr/lib/cgi-bin/php-fcgi-$userName -socket /run/php/php-fpm.$userName.sock -pass-header Authorization
-
-            <Directory /usr/lib/cgi-bin>
-                Require all granted
-            </Directory>
+        <IfModule mod_rewrite.c>
+            RewriteEngine on
+            RewriteCond %{HTTPS} off
+            RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
         </IfModule>
-
-        <IfModule mod_fastcgi.c>
-            <FilesMatch .+\.ph(p[345]?|t|tml)$>
-       	        SetHandler php-fcgi-$userName
-    	    </FilesMatch>
-        </IfModule>
-
-        SSLEngine on
-        SSLProtocol all -SSLv2 -SSLv3
-        SSLHonorCipherOrder on
-        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-        SSLOptions +StdEnvVars +ExportCertData
     </VirtualHost>
-</IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
-            else
-                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                echo "<Directory /home/$userName/www/>
-    Options Indexes FollowSymLinks
-    AllowOverride None
-    Require all granted
-</Directory>
-<VirtualHost *:80>
-    ServerAdmin $adminEmail
-    DocumentRoot /home/$userName/www/
+    <IfModule mod_ssl.c>
+        <VirtualHost *:443>
+            ServerAdmin $adminEmail
+            DocumentRoot /home/$userName/www/
 
-    ServerName $serverName
-    ServerAlias $serverAlias
+            ServerName $serverName
+            ServerAlias $serverAlias
 
-    ErrorLog /home/$userName/log/error.log
-    CustomLog /home/$userName/log/access.log combined
+            ErrorLog /home/$userName/log/error.log
+            CustomLog /home/$userName/log/access.log combined
 
-    <IfModule mod_fastcgi.c>
-        AddHandler php-fcgi-$userName .php
-        Action php-fcgi-$userName /php-fcgi-$userName
-        Alias /php-fcgi-$userName /usr/lib/cgi-bin/php-fcgi-$userName
-        FastCgiExternalServer /usr/lib/cgi-bin/php-fcgi-$userName -socket /run/php/php-fpm.$userName.sock -pass-header Authorization
+            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost\"
 
-        <Directory /usr/lib/cgi-bin>
-          Require all granted
-        </Directory>
-    </IfModule>
+            Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
-    <IfModule mod_fastcgi.c>
-        <FilesMatch .+\.ph(p[345]?|t|tml)$>
-            SetHandler php-fcgi-$userName
-        </FilesMatch>
-    </IfModule>
+            SSLEngine on
+            SSLProtocol all -SSLv2 -SSLv3
+            SSLHonorCipherOrder on
+            SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+            SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+            SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+            SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+            SSLOptions +StdEnvVars +ExportCertData
+        </VirtualHost>
+    </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+                else
+                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                    echo "<Directory /home/$userName/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    <VirtualHost *:80>
+        ServerAdmin $adminEmail
+        DocumentRoot /home/$userName/www/
 
-</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
-            fi
+        ServerName $serverName
+        ServerAlias $serverAlias
 
-	    # Configuring CGI
-            echo "Creating php-fpm pool for '$serverName'..."
-            if [ $chrootHost == 1 ]
-            then
+        ErrorLog /home/$userName/log/error.log
+        CustomLog /home/$userName/log/access.log combined
+
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost\"
+
+    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+                fi
+
+                # Configuring CGI
+                echo "Creating php-fpm pool for '$serverName'..."
                 echo "[$userName]
 
 ; Define socket
@@ -179,6 +153,9 @@ chroot = /home/$userName/www/
 
 ; Define env var for this instance
 env[DOCUMENT_ROOT] = /home/$userName/www/
+
+; PHP Settings
+
 
 ; Default pool settings
 chdir = /
@@ -192,11 +169,95 @@ pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3" > /home/$userName/pool.cfg
-            else
+            else 
+                # Non chroot hosts
+                
+                # Setting up Virtual Host
+                if [ $sslSecured == 1 ]
+                then
+                    _addSSL
+
+                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                    echo "<Directory /home/$userName/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    <VirtualHost *:80>
+        ServerAdmin $adminEmail
+        DocumentRoot /home/$userName/www/
+
+        ServerName $serverName
+        ServerAlias $serverAlias
+
+        ErrorLog /home/$userName/log/error.log
+        CustomLog /home/$userName/log/access.log combined
+
+        <IfModule mod_rewrite.c>
+            RewriteEngine on
+            RewriteCond %{HTTPS} off
+            RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+        </IfModule>
+    </VirtualHost>
+    <IfModule mod_ssl.c>
+        <VirtualHost *:443>
+            ServerAdmin $adminEmail
+            DocumentRoot /home/$userName/www/
+
+            ServerName $serverName
+            ServerAlias $serverAlias
+
+            ErrorLog /home/$userName/log/error.log
+            CustomLog /home/$userName/log/access.log combined
+
+            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www/\"
+
+            Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+
+            SSLEngine on
+            SSLProtocol all -SSLv2 -SSLv3
+            SSLHonorCipherOrder on
+            SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+            SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+            SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+            SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+            SSLOptions +StdEnvVars +ExportCertData
+        </VirtualHost>
+    </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+                else
+                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                    echo "<Directory /home/$userName/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    <VirtualHost *:80>
+        ServerAdmin $adminEmail
+        DocumentRoot /home/$userName/www/
+
+        ServerName $serverName
+        ServerAlias $serverAlias
+
+        ErrorLog /home/$userName/log/error.log
+        CustomLog /home/$userName/log/access.log combined
+
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www/\"
+
+    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+                fi
+            
+                # Configuring CGI
+                echo "Creating php-fpm pool for '$serverName'..."
                 echo "[$userName]
 
 ; Define socket
 listen = /run/php/php-fpm.$userName.sock
+
+; Define env var for this instance
+env[DOCUMENT_ROOT] = /home/$userName/www/
+
+; PHP Settings
+
 
 ; Default pool settings
 chdir = /
