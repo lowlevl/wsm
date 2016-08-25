@@ -105,7 +105,7 @@ function _createHost()
             ErrorLog /home/$userName/log/error.log
             CustomLog /home/$userName/log/access.log combined
 
-            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost\"
+            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/www\"
 
             Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
@@ -136,7 +136,7 @@ function _createHost()
         ErrorLog /home/$userName/log/error.log
         CustomLog /home/$userName/log/access.log combined
 
-        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost\"
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/www\"
 
     </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
                 fi
@@ -149,7 +149,7 @@ function _createHost()
 listen = /run/php/php-fpm.$userName.sock
 
 ; Chrooting dir
-chroot = /home/$userName/www/
+chroot = /home/$userName/
 
 ; Define env var for this instance
 env[DOCUMENT_ROOT] = /home/$userName/www/
@@ -158,7 +158,7 @@ env[DOCUMENT_ROOT] = /home/$userName/www/
 
 
 ; Default pool settings
-chdir = /
+chdir = /www/
 user = $userName
 group = $userName
 listen.owner = $userName
@@ -210,7 +210,7 @@ pm.max_spare_servers = 3" > /home/$userName/pool.cfg
             ErrorLog /home/$userName/log/error.log
             CustomLog /home/$userName/log/access.log combined
 
-            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www/\"
+            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www\"
 
             Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
@@ -241,7 +241,7 @@ pm.max_spare_servers = 3" > /home/$userName/pool.cfg
         ErrorLog /home/$userName/log/error.log
         CustomLog /home/$userName/log/access.log combined
 
-        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www/\"
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www\"
 
     </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
                 fi
@@ -294,11 +294,15 @@ pm.max_spare_servers = 3" > /home/$userName/pool.cfg
             echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userpass
 
             # Fixing permissions
-            echo "Fixing permissions for '/home/$userName/'..."
-            chmod 755 /home/$userName/ -R
-            echo "   * Fixed permissions to '755'..."
-            chown $userName:$userName /home/$userName/ -R
+            echo "Disabling access to '/home/$userName/' to user '$userName' recursively..."
+            chmod 466 /home/$userName/* -R
+            echo "   * Fixed permissions to '066'..."
+            chown $userName:$userName /home/$userName/* -R
             echo "   * Fixed owner to '$userName'"
+
+            echo "Gaining access to '/home/$userName/www/' to user '$userName'  recursively..."
+            chmod 755 /home/$userName/www/ -R
+            echo "   * Fixed permissions to '755'..."
         fi
     else
 	echo "Yes"
