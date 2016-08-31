@@ -169,7 +169,13 @@ pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3" > /home/$userName/pool.cfg
-            else 
+
+                # PHP requirements in chroot
+                echo "Adding PHP dependencies in chroot directory"
+                mkdir -p /home/$userName/{etc,usr/share,var/lib/php/sessions,tmp}
+                cp /etc/localtime /home/$userName/etc
+                cp -r /usr/share/zoneinfo /home/$userName/usr/share/ 
+            else
                 # Non chroot hosts
                 
                 # Setting up Virtual Host
@@ -294,15 +300,15 @@ pm.max_spare_servers = 3" > /home/$userName/pool.cfg
             echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userpass
 
             # Fixing permissions
-            echo "Disabling access to '/home/$userName/' to user '$userName' recursively..."
-            chmod 466 /home/$userName/* -R
-            echo "   * Fixed permissions to '066'..."
+            echo "Gaining access to '/home/$userName/' to user '$userName' recursively..."
+            chmod 755 /home/$userName/* -R
+            echo "   * Fixed permissions to '755'..."
             chown $userName:$userName /home/$userName/* -R
             echo "   * Fixed owner to '$userName'"
 
-            echo "Gaining access to '/home/$userName/www/' to user '$userName' recursively..."
-            chmod 755 /home/$userName/www/ -R
-            echo "   * Fixed permissions to '755'..."
+            echo "Disabling access to '/home/$userName/{log,pool.cfg,userpass}/' to user '$userName' recursively..."
+            chmod 466 /home/$userName/{log,pool.cfg,userpass} -R
+            echo "   * Fixed permissions to '466'..."
         fi
     else
 	echo "Yes"
