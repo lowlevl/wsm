@@ -1,5 +1,5 @@
 # securhOst
-Simple script to create apache virtual servers, with php-fpm pool(and chroot jail), and possibility to auto create SSL Certificate with Let's Encrypt and set up HSTS.
+Simple script to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt and set up HSTS.
 
 # Dependencies
 ```

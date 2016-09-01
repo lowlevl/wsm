@@ -47,7 +47,7 @@ function _createHost()
     echo -n "Checking if vhost is existing... "
     if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
     then
-	    echo -e "No\n"
+	echo -e "No\n"
         
         if [ ! -f $userDir/.wwwUser ]
         then
@@ -212,7 +212,7 @@ pm.max_spare_servers = 3" >> $serverDir/pool.cfg
         chmod 466 $serverDir/{log,pool.cfg,userpass} -R
         echo "   * Fixed permissions to '466'..."
     else
-	    echo -e "Yes\n"
+	echo -e "Yes\n"
         
         echo "Warning: '$serverName' is already configured..."
         exit 1
@@ -224,7 +224,8 @@ function _removeHost()
     echo -n "Checking if vhost is existing... "
     if [ -f /etc/apache2/sites-enabled/$serverName.conf ] && [ -d "$serverDir" ]
     then
-	    echo "Ok"
+	echo "Ok"
+        
         # Revoking and removing ssl cert
         if [ -f "$serverDir/.sslCert" ]
         then
@@ -246,7 +247,7 @@ function _removeHost()
         rm -f /etc/apache2/sites-enabled/$serverName.conf
         echo "   - Configuration for '$serverName' removed in apache directory."
     else
-	    echo "Failed"
+	echo "Failed"
         
         echo -e "Warning: '$serverName' is not a valid server name..."
         exit 1
@@ -409,6 +410,9 @@ do
                                 echo "Error: You can only specify one server name to remove."
                                 exit 1
                             fi
+                        else
+                            echo "Error: Please specify a server name after -s|--server argument."
+                            exit 1
                         fi
                 esac
             done
