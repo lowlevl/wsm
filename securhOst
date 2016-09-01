@@ -46,8 +46,8 @@ function _createHost()
     echo -n "Checking if vhost is existing... "
     if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
     then
-	echo "No"
-        if [ ! -f /home/$userName/.wwwUser ]
+	      echo -e "No\n"
+        if [ ! -f $userDir/.wwwUser ]
         then
             # Add an user
             echo "Creating new user '$userName'..."
@@ -55,104 +55,107 @@ function _createHost()
 
             # Adding a lock file in user dir to protect other users from removing
             echo "Locking dir for '$userName'..."
-            touch /home/$userName/.wwwUser
+            touch $userDir/.wwwUser
+        fi
+        
+        # Making dirs
+        echo "   + $serverDir"
+        mkdir $serverDir
+        echo "   + $serverDir/www"
+        mkdir $serverDir/www
+        echo "   + $serverDir/log"
+        mkdir $serverDir/log
 
-            # Making dirs
-            echo "   + /home/$userName/www"
-            mkdir /home/$userName/www
-            echo "   + /home/$userName/log"
-            mkdir /home/$userName/log
-
-            if [ $chrootHost == 1 ]
+        if [ $chrootHost == 1 ]
+        then
+            # Chroot hosts
+        
+            # Setting up Virtual Host
+            if [ $sslSecured == 1 ]
             then
-                # Chroot hosts
-            
-                # Setting up Virtual Host
-                if [ $sslSecured == 1 ]
-                then
-                    _addSSL
+                _addSSL
 
-                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                    echo "<Directory /home/$userName/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-    <VirtualHost *:80>
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "<Directory $serverDir/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot $serverDir/www/
+
+    ServerName $serverName
+    ServerAlias $serverAlias
+
+    ErrorLog $serverDir/log/error.log
+    CustomLog $serverDir/log/access.log combined
+
+    <IfModule mod_rewrite.c>
+        RewriteEngine on
+        RewriteCond %{HTTPS} off
+        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+    </IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+    <VirtualHost *:443>
         ServerAdmin $adminEmail
-        DocumentRoot /home/$userName/www/
+        DocumentRoot $serverDir/www/
 
         ServerName $serverName
         ServerAlias $serverAlias
 
-        ErrorLog /home/$userName/log/error.log
-        CustomLog /home/$userName/log/access.log combined
+        ErrorLog $serverDir/log/error.log
+        CustomLog $serverDir/log/access.log combined
 
-        <IfModule mod_rewrite.c>
-            RewriteEngine on
-            RewriteCond %{HTTPS} off
-            RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-        </IfModule>
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"
+
+        Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+
+        SSLEngine on
+        SSLProtocol all -SSLv2 -SSLv3
+        SSLHonorCipherOrder on
+        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+        SSLOptions +StdEnvVars +ExportCertData
     </VirtualHost>
-    <IfModule mod_ssl.c>
-        <VirtualHost *:443>
-            ServerAdmin $adminEmail
-            DocumentRoot /home/$userName/www/
+</IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+            else
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "<Directory $serverDir/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot $serverDir/www/
 
-            ServerName $serverName
-            ServerAlias $serverAlias
+    ServerName $serverName
+    ServerAlias $serverAlias
 
-            ErrorLog /home/$userName/log/error.log
-            CustomLog /home/$userName/log/access.log combined
+    ErrorLog $serverDir/log/error.log
+    CustomLog $serverDir/log/access.log combined
 
-            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/www\"
+    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"
 
-            Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+            fi
 
-            SSLEngine on
-            SSLProtocol all -SSLv2 -SSLv3
-            SSLHonorCipherOrder on
-            SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-            SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-            SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-            SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-            SSLOptions +StdEnvVars +ExportCertData
-        </VirtualHost>
-    </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
-                else
-                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                    echo "<Directory /home/$userName/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-    <VirtualHost *:80>
-        ServerAdmin $adminEmail
-        DocumentRoot /home/$userName/www/
-
-        ServerName $serverName
-        ServerAlias $serverAlias
-
-        ErrorLog /home/$userName/log/error.log
-        CustomLog /home/$userName/log/access.log combined
-
-        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/www\"
-
-    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
-                fi
-
-                # Configuring CGI
-                echo "Creating php-fpm pool for '$serverName'..."
-                echo "[$userName]
+            # Configuring CGI
+            echo "Creating php-fpm pool for '$serverName'..."
+            echo "[$serverName]
 
 ; Define socket
-listen = /run/php/php-fpm.$userName.sock
+listen = /run/php/php-fpm.$serverName.sock
 
 ; Chrooting dir
-chroot = /home/$userName/
+chroot = $serverDir/
 
 ; Define env var for this instance
-env[DOCUMENT_ROOT] = /home/$userName/www/
+env[DOCUMENT_ROOT] = $serverDir/www/
 
 ; PHP Settings
 
@@ -168,99 +171,99 @@ pm = ondemand
 pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
-pm.max_spare_servers = 3" > /home/$userName/pool.cfg
+pm.max_spare_servers = 3" > $serverDir/pool.cfg
 
-                # PHP requirements in chroot
-                echo "Adding PHP dependencies in chroot directory"
-                mkdir -p /home/$userName/{etc,usr/share,var/lib/php/sessions,tmp}
-                cp /etc/localtime /home/$userName/etc
-                cp -r /usr/share/zoneinfo /home/$userName/usr/share/ 
-            else
-                # Non chroot hosts
-                
-                # Setting up Virtual Host
-                if [ $sslSecured == 1 ]
-                then
-                    _addSSL
-
-                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                    echo "<Directory /home/$userName/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-    <VirtualHost *:80>
-        ServerAdmin $adminEmail
-        DocumentRoot /home/$userName/www/
-
-        ServerName $serverName
-        ServerAlias $serverAlias
-
-        ErrorLog /home/$userName/log/error.log
-        CustomLog /home/$userName/log/access.log combined
-
-        <IfModule mod_rewrite.c>
-            RewriteEngine on
-            RewriteCond %{HTTPS} off
-            RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-        </IfModule>
-    </VirtualHost>
-    <IfModule mod_ssl.c>
-        <VirtualHost *:443>
-            ServerAdmin $adminEmail
-            DocumentRoot /home/$userName/www/
-
-            ServerName $serverName
-            ServerAlias $serverAlias
-
-            ErrorLog /home/$userName/log/error.log
-            CustomLog /home/$userName/log/access.log combined
-
-            ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www\"
-
-            Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
-
-            SSLEngine on
-            SSLProtocol all -SSLv2 -SSLv3
-            SSLHonorCipherOrder on
-            SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-            SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-            SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-            SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-            SSLOptions +StdEnvVars +ExportCertData
-        </VirtualHost>
-    </IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
-                else
-                    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
-                    echo "<Directory /home/$userName/www/>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-    <VirtualHost *:80>
-        ServerAdmin $adminEmail
-        DocumentRoot /home/$userName/www/
-
-        ServerName $serverName
-        ServerAlias $serverAlias
-
-        ErrorLog /home/$userName/log/error.log
-        CustomLog /home/$userName/log/access.log combined
-
-        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$userName.sock|fcgi://localhost/home/$userName/www\"
-
-    </VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
-                fi
+            # PHP requirements in chroot
+            echo "Adding PHP dependencies in chroot directory"
+            mkdir -p $serverDir/{etc,usr/share,var/lib/php/sessions,tmp}
+            cp /etc/localtime $serverDir/etc
+            cp -r /usr/share/zoneinfo $serverDir/usr/share/ 
+        else
+            # Non chroot hosts
             
-                # Configuring CGI
-                echo "Creating php-fpm pool for '$serverName'..."
-                echo "[$userName]
+            # Setting up Virtual Host
+            if [ $sslSecured == 1 ]
+            then
+                _addSSL
+
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "<Directory $serverDir/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot $serverDir/www/
+
+    ServerName $serverName
+    ServerAlias $serverAlias
+
+    ErrorLog $serverDir/log/error.log
+    CustomLog $serverDir/log/access.log combined
+
+    <IfModule mod_rewrite.c>
+        RewriteEngine on
+        RewriteCond %{HTTPS} off
+        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+    </IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+    <VirtualHost *:443>
+        ServerAdmin $adminEmail
+        DocumentRoot $serverDir/www/
+
+        ServerName $serverName
+        ServerAlias $serverAlias
+
+        ErrorLog $serverDir/log/error.log
+        CustomLog $serverDir/log/access.log combined
+
+        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"
+
+        Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+
+        SSLEngine on
+        SSLProtocol all -SSLv2 -SSLv3
+        SSLHonorCipherOrder on
+        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+        SSLOptions +StdEnvVars +ExportCertData
+    </VirtualHost>
+</IfModule>" > /etc/apache2/sites-enabled/$serverName.conf
+            else
+                echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+                echo "<Directory $serverDir/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin $adminEmail
+    DocumentRoot $serverDir/www/
+
+    ServerName $serverName
+    ServerAlias $serverAlias
+
+    ErrorLog $serverDir/log/error.log
+    CustomLog $serverDir/log/access.log combined
+
+    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"
+
+</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+            fi
+        
+            # Configuring CGI
+            echo "Creating php-fpm pool for '$serverName'..."
+            echo "[$serverName]
 
 ; Define socket
-listen = /run/php/php-fpm.$userName.sock
+listen = /run/php/php-fpm.$serverName.sock
 
 ; Define env var for this instance
-env[DOCUMENT_ROOT] = /home/$userName/www/
+env[DOCUMENT_ROOT] = $serverDir/www/
 
 ; PHP Settings
 
@@ -276,82 +279,87 @@ pm = ondemand
 pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
-pm.max_spare_servers = 3" > /home/$userName/pool.cfg
-            fi
-
-            # Checking for PHP-FPM include config
-            if ! grep -qF "include=/home/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-            then
-                echo "Warning: No include for pools in php-fpm config, automatically adding."
-                sed -i -e 's/.*include=/;&/' -e '/;include=/a include=/home/*/pool.cfg' /etc/php/*/fpm/php-fpm.conf
-            fi
-
-            # Creating default served file
-            echo "   + Moving default page to the user ~/www/ dir"
-            cp index.php /home/$userName/www/index.php
-
-            # Creating new ftp user
-            echo "Adding ftp user for '$userName'..."
-            ( echo $userPassword ; echo $userPassword ) | pure-pw useradd $userName -u $userName -d /home/$userName/www/ -m > /dev/null
-            pure-pw mkdb
-            service pure-ftpd restart
-
-            # Creating ftp password file
-            echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$userPassword\"\n}" > /home/$userName/userpass
-
-            # Fixing permissions
-            echo "Gaining access to '/home/$userName/' to user '$userName' recursively..."
-            chmod 755 /home/$userName/* -R
-            echo "   * Fixed permissions to '755'..."
-            chown $userName:$userName /home/$userName/* -R
-            echo "   * Fixed owner to '$userName'"
-
-            echo "Disabling access to '/home/$userName/{log,pool.cfg,userpass}/' to user '$userName' recursively..."
-            chmod 466 /home/$userName/{log,pool.cfg,userpass} -R
-            echo "   * Fixed permissions to '466'..."
+pm.max_spare_servers = 3" > $serverDir/pool.cfg
         fi
+
+        # Checking for PHP-FPM include config
+        if ! grep -qF "include=/home/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
+        then
+            echo "Warning: No include for pools in php-fpm config, automatically adding."
+            sed -i -e 's/.*include=/;&/' -e '/;include=/a include=/home/*/*/pool.cfg' /etc/php/*/fpm/php-fpm.conf
+        fi
+
+        # Creating default served file
+        echo "   + Moving default page to the user ~/www/ dir"
+        cp index.php $serverDir/www/index.php
+
+        # Creating new ftp user
+        echo "Adding ftp user '$ftpUser'..."
+        ( echo $ftpPassword ; echo $ftpPassword ) | pure-pw useradd $ftpUser -u $userName -d $serverDir/www/ -m > /dev/null
+        pure-pw mkdb
+        service pure-ftpd restart
+
+        # Creating ftp password file
+        echo -e "{\n    \"username\": \"$ftpUser\",\n    \"password\": \"$ftpPassword\"\n}" > $serverDir/userpass
+
+        # Fixing permissions
+        echo "Gaining access to '$serverDir/' to user '$userName' recursively..."
+        chmod 755 $serverDir/* -R
+        echo "   * Fixed permissions to '755'..."
+        chown $userName:$userName $serverDir/* -R
+        echo "   * Fixed owner to '$userName'"
+
+        echo "Disabling access to '$serverDir/{log,pool.cfg,userpass}/' to user '$userName' recursively..."
+        chmod 466 $serverDir/{log,pool.cfg,userpass} -R
+        echo "   * Fixed permissions to '466'..."
     else
-	echo "Yes"
+	      echo -e "Yes\n"
         echo "Warning: '$serverName' is already configured..."
         exit 1
     fi
 }
 
-function _removeHost
+function _removeHost()
 {
     echo -n "Checking if vhost is existing... "
     if [ -f /etc/apache2/sites-enabled/$serverName.conf ]
     then
-	echo "Ok"
-        if [ -f /home/$userName/.wwwUser ]
+	      echo "Ok"
+        if [ -f $userDir/.wwwUser ]
         then
-            # Revoking and removing ssl cert
-            if [ -f /home/$userName/.sslCert ]
+            if [ -d $serverDir ]
             then
-                _removeSSL
+                # Revoking and removing ssl cert
+                if [ -f $serverDir/.sslCert ]
+                then
+                    _removeSSL
+                fi
+
+                echo -e "\nRemoving user and files..."
+                # Removing ftp user
+                pure-pw userdel $ftpUser -m
+                pure-pw mkdb
+                service pure-ftpd restart
+                echo "   - FTP user '$ftpUser' deleted."
+                
+                # Removing files
+                rm -rf $serverDir
+                echo "   - '$serverDir/' dir deleted."
+
+                # Deleting apache virtual server
+                rm -f /etc/apache2/sites-enabled/$serverName.conf
+                echo "   - Configuration for '$serverName' removed in apache directory."
+            else
+                echo "Warning: This host doesn't belong to '$userName' !"
+                exit 1
             fi
-
-            echo -e "\nRemoving user and files..."
-            # Removing ftp user
-            pure-pw userdel $userName -m
-            pure-pw mkdb
-            service pure-ftpd restart
-            echo "   - FTP user '$userName' deleted."
-
-            # Removing unix user
-            userdel $userName -rf
-            echo "   - Unix user '$userName' deleted."
-
-            # Deleting apache virtual server
-            rm -f /etc/apache2/sites-enabled/$serverName.conf
-            echo "   - Configuration for '$serverName' removed in apache directory."
         else
-            echo "Warning: Prevented non-vhost user delete !"
+            echo "Warning: Prevented non-vhost user action !"
             exit 1
         fi
     else
-	echo "Failed"
-        echo "Warning: '$serverName' is not a valid server name..."
+	      echo "Failed"
+        echo -e "\nWarning: '$serverName' is not a valid server name..."
         exit 1
     fi
 }
@@ -360,14 +368,14 @@ function _addSSL()
 {
     echo -e "\nGenerating SSL Let's Encrypt Certificate..."
     echo "   * Setting up web config for Let's Encrypt activation.."
-    echo "<Directory /home/$userName/www/>
+    echo "<Directory $serverDir/www/>
     Options Indexes FollowSymLinks
     AllowOverride None
     Require all granted
 </Directory>
 <VirtualHost *:80>
     ServerAdmin $adminEmail
-    DocumentRoot /home/$userName/www/
+    DocumentRoot $serverDir/www/
 
     ServerName $serverName
     ServerAlias $serverAlias
@@ -378,13 +386,13 @@ function _addSSL()
     echo "   *** Generating certificate ***"
     if [ ! -z $serverAlias ] # Check if aliases
     then
-        $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName -d $serverAlias
+        $letsEncryptExec certonly --webroot --webroot-path $serverDir/www/ -d $serverName -d $serverAlias
     else
-        $letsEncryptExec certonly --webroot --webroot-path /home/$userName/www/ -d $serverName
+        $letsEncryptExec certonly --webroot --webroot-path $serverDir/www/ -d $serverName
     fi
 
     # Touching file to know we have an ssl cert
-    touch /home/$userName/.sslCert
+    touch $serverDir/.sslCert
 }
 
 function _removeSSL()
@@ -396,6 +404,9 @@ function _removeSSL()
     rm -rf $letsEncryptDir/live/$serverName
     rm -rf $letsEncryptDir/archive/$serverName
     rm -f $letsEncryptDir/renewal/$serverName.conf
+    
+    # Removing file to know we don't an ssl cert
+    rm $serverDir/.sslCert
 }
 
 # Parsing config
@@ -424,6 +435,17 @@ do
                             fi
                         fi
                     ;;
+                    -u | --user)
+                        shift
+                        if [ -z $userName ]
+                        then
+                            userName=$1-www
+                        else
+                            echo "Error: Please specify an username after -u|--user argument"
+                        fi
+                    ;;
+                     
+                    # Options
                     --ssl)
                         sslSecured=1
                     ;;
@@ -439,9 +461,26 @@ do
                 exit 1
             fi
 
-            # If all ok, create $userName var
-            userName=$(echo $serverName | tr . -)
-            userPassword=$(openssl rand -base64 12)
+            # Check if there is an user name
+            if [ -z $userName ]
+            then
+                echo "Error: No user name specified. Try '$0 add --help'"
+                exit 1
+            fi
+            
+            # Check if username is taken by an user who is not a www user.
+            getent passwd $userName >/dev/null 2>&1 && userExists=true
+            if [[ $userExists == true ]] && [[ ! -f /home/$userName/.wwwUser ]]
+            then
+                echo "Error: The username '$userName' exists and is not a www user."
+                exit 1
+            fi
+
+            # Creating vars
+            userDir=/home/$userName
+            serverDir=$userDir/$serverName
+            ftpUser=$(echo "$serverName" | tr . -)
+            ftpPassword=$(openssl rand -base64 12)
             _createHost
 
             # Applying conf
@@ -451,7 +490,7 @@ do
             echo "Reloading php-fpm config"
             service php*-fpm restart
 
-            echo "Stored ftp login and password in '/home/$userName/userpass'"
+            echo "Stored ftp login and password in '$serverDir/userpass'"
             echo "Done."
             exit 0
         ;;
@@ -472,6 +511,16 @@ do
                             echo "Error: You can only specify one server name to remove."
                             exit 1
                         fi
+                    ;;
+                    -u | --user)
+                        shift
+                        if [ -z $userName ]
+                        then
+                            userName=$1-www
+                        else
+                            echo "Error: Please specify an username after -u|--user argument"
+                        fi
+                    ;;
                 esac
             done
 
@@ -482,8 +531,23 @@ do
                 exit 1
             fi
 
-            # If all ok, create $userName var and remove stuff
-            userName=$(echo $serverName | tr . -)
+            # Check if there is an user name
+            if [ -z $userName ]
+            then
+                echo "Error: No user name specified. Try '$0 remove --help'"
+                exit 1
+            fi
+            # Check if username is taken by an user who is not a www user.
+            if [ ! -f /home/$userName/.wwwUser ]
+            then
+                echo "Error: The username '$userName' is not a www user or is unknown."
+                exit 1
+            fi
+
+            # Creating vars
+            userDir=/home/$userName
+            serverDir=$userDir/$serverName
+            ftpUser=$(echo "$serverName" | tr . -)
             _removeHost
 
             # Applying conf
