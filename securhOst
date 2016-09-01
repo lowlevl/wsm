@@ -27,16 +27,17 @@ function _help()
 
 function _helpAdd()
 {
-    echo -e "Usage: $0 add -s|--server <name> [--ssl] [--no-chroot]\n"
-    echo "  -s|--server:    Specify the domain name, for aliases you can seprate them by commas or specify a new --server <name>"
-    echo "  --ssl:          If specified, a Let's Encrypt certificate will be generated and will be applied to the virtual server"
-    echo "  --no-chroot:    Do not chroot the virtual server, only for websites who uses external programs"
+    echo -e "Usage: $0 add -s|--server <name> -u|--user <name> [options]\n"
+    echo "Options:"
+    echo "  --ssl:          If specified, a Let's Encrypt certificate will be"
+    echo "                  generated and will be applied to the virtual server"
+    echo "  --no-chroot:    Do not chroot the virtual server, only for websites"
+    echo "                  who uses external programs"
     exit 1
 }
 function _helpRemove()
 {
     echo -e "Usage: $0 remove -s|--server <name>\n"
-    echo "  -s|--server:    Specify the creation domain name, not an alias."
     exit 1
 }
 
@@ -58,7 +59,7 @@ function _createHost()
             echo "Locking dir for '$userName'..."
             touch $userDir/.wwwUser
             
-            echo "Disabling access to '$userDir/.wwwUser' to user '$userName' recursively..."
+            echo "Disabling access to '$userDir/.wwwUser' to user '$userName'"
             chmod 466 $userDir/.wwwUser
         fi
         
@@ -311,25 +312,32 @@ do
                     ;;
                     -s | --server)
                         shift
-                        if [ -z $serverName ]
+                        if [ ! -z $1 ]
                         then
-                            serverName=$1
-                        else
-                            if [ -z $serverAlias ]
+                            if [ -z $serverName ]
                             then
-                                serverAlias=$1
+                                serverName=$1
                             else
-                                serverAlias="${serverAlias},$1"
+                                if [ -z $serverAlias ]
+                                then
+                                    serverAlias=$1
+                                else
+                                    serverAlias="${serverAlias},$1"
+                                fi
                             fi
+                        else
+                            echo "Error: Please specify a server name after -s|--server argument."
+                            exit 1
                         fi
                     ;;
                     -u | --user)
                         shift
-                        if [ -z $userName ]
+                        if [ ! -z $1 ]
                         then
                             userName=$1-www
                         else
-                            echo "Error: Please specify an username after -u|--user argument"
+                            echo "Error: Please specify an username after -u|--user argument."
+                            exit 1
                         fi
                     ;;
                      
@@ -392,12 +400,15 @@ do
                     ;;
                     -s | --server)
                         shift
-                        if [ -z $serverName ]
+                        if [ ! -z $1 ]
                         then
-                            serverName=$1
-                        else
-                            echo "Error: You can only specify one server name to remove."
-                            exit 1
+                            if [ -z $serverName ]
+                            then
+                                serverName=$1
+                            else
+                                echo "Error: You can only specify one server name to remove."
+                                exit 1
+                            fi
                         fi
                 esac
             done
@@ -427,6 +438,7 @@ do
         ;;
         -h | --help)
             break
+        ;;
     esac
     shift
 done
