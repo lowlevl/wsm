@@ -1,4 +1,4 @@
-# securhOst
+# hostmgr
 Simple script to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt and set up HSTS.
 
 # Dependencies
@@ -14,7 +14,7 @@ Apache Mods:
   - headers
 ```
 
-# Why securhOst ?
+# Why hostmgr ?
 
 1. It's very easy to create virtual host in seconds.
 2. It creates automatically ftp user and pass for customers.
