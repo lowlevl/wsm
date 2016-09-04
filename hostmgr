@@ -5,7 +5,8 @@ letsEncryptExec=letsencrypt
 letsEncryptDir=/etc/letsencrypt
 adminEmail=root@yourserver.com
 
-userBasePath=/home/www
+userBasePath=/home/web
+userNameSuffix=
 # DO NOT EDIT AFTER HERE #
 
 # Vars
@@ -55,7 +56,7 @@ function _createHost()
             # Check for userBasePath dir
             if [ ! -d $userBasePath ]
             then
-                echo "Warning: The dir '$userBasePath' was not created, creating."
+                echo "Info: The dir '$userBasePath' was not created, creating."
                 mkdir -p $userBasePath
             fi
 
@@ -207,7 +208,7 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
         # Checking for PHP-FPM include config
         if ! grep -qF "include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
         then
-            echo "Warning: No include for pools in php-fpm config, automatically adding."
+            echo "Info: No include for pools in php-fpm config, automatically adding."
             sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
         fi
 
@@ -364,7 +365,7 @@ do
                         shift
                         if [ ! -z $1 ]
                         then
-                            userName=$1
+                            userName=$1$userNameSuffix
                         else
                             echo "Error: Please specify an username after -u|--user argument."
                             exit 1
