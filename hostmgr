@@ -47,9 +47,9 @@ function _createHost()
 {
     # If server is not configured, launch creation
     echo -n "Checking if vhost is existing... "
-    if [ ! -f /etc/apache2/sites-enabled/$serverName.conf ]
+    if [ ! -f /etc/apache2/sites-available/$serverName.conf ]
     then
-	echo -e "No\n"
+        echo -e "No\n"
         
         if [ ! -f $userDir/.wwwUser ]
         then
@@ -87,9 +87,9 @@ function _createHost()
         fi
 
         # Creating apache config file
-        echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-enabled/'"
+        echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
         echo "<Directory $serverDir/www/>
-    Options Indexes FollowSymLinks
+    Options -Indexes -FollowSymLinks +MultiViews
     AllowOverride None
     Require all granted
 </Directory>
@@ -100,7 +100,7 @@ function _createHost()
     ServerName $serverName
     ServerAlias $serverAlias
 
-    ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-enabled/$serverName.conf
+    ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-available/$serverName.conf
         
         if [ $sslSecured == 1 ]
         then
@@ -118,13 +118,13 @@ function _createHost()
         ServerName $serverName
         ServerAlias $serverAlias
 
-        ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-enabled/$serverName.conf
+        ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-available/$serverName.conf
         
             if [ $chrootHost == 1 ]
             then
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-enabled/$serverName.conf
+                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-enabled/$serverName.conf
+                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
             fi
             echo "        Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
@@ -137,15 +137,15 @@ function _createHost()
         SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
         SSLOptions +StdEnvVars +ExportCertData
     </VirtualHost>
-</IfModule>" >> /etc/apache2/sites-enabled/$serverName.conf
+</IfModule>" >> /etc/apache2/sites-available/$serverName.conf
         else
             if [ $chrootHost == 1 ]
             then
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-enabled/$serverName.conf
+                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-enabled/$serverName.conf
+                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
             fi
-            echo "</VirtualHost>" >> /etc/apache2/sites-enabled/$serverName.conf
+            echo "</VirtualHost>" >> /etc/apache2/sites-available/$serverName.conf
         fi
         
         # Configuring CGI
@@ -185,7 +185,6 @@ pm.max_spare_servers = 3
 catch_workers_output = yes
 
 ; PHP Settings
-php_flag[display_errors] = on
 php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
         if [ $chrootHost == 1 ]
         then
@@ -239,8 +238,12 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
             echo "Disabling access to '$serverDir/{pool.cfg,userpass}' to user '$userName'..."
             chmod 466 $serverDir/{pool.cfg,userpass}
         fi
+        
+        # Enabling site
+        echo "Enabling site '$serverName'."
+        a2ensite $serverName
     else
-	echo -e "Yes\n"
+        echo -e "Yes\n"
         
         echo "Error: '$serverName' is already configured..."
         exit 1
@@ -250,7 +253,7 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
 function _removeHost()
 {
     echo -n "Checking if vhost is existing... "
-    if [ -f /etc/apache2/sites-enabled/$serverName.conf ] && [ -d "$serverDir" ]
+    if [ -f /etc/apache2/sites-available/$serverName.conf ] && [ -d "$serverDir" ]
     then
 	echo "Ok"
         
@@ -272,10 +275,10 @@ function _removeHost()
         echo "   - '$serverDir/' dir deleted."
 
         # Deleting apache virtual server
-        rm -f /etc/apache2/sites-enabled/$serverName.conf
+        rm -f /etc/apache2/sites-available/$serverName.conf
         echo "   - Configuration for '$serverName' removed in apache directory."
     else
-	echo "Failed"
+        echo "Failed"
         
         echo -e "Error: '$serverName' is not a valid server name..."
         exit 1
@@ -287,7 +290,7 @@ function _addSSL()
     echo -e "\nGenerating SSL Let's Encrypt Certificate..."
     echo "   * Setting up web config for Let's Encrypt activation.."
     echo "<Directory $serverDir/www/>
-    Options Indexes FollowSymLinks
+    Options -Indexes -FollowSymLinks +MultiViews
     AllowOverride None
     Require all granted
 </Directory>
@@ -297,7 +300,7 @@ function _addSSL()
 
     ServerName $serverName
     ServerAlias $serverAlias
-</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
+</VirtualHost>" > /etc/apache2/sites-available/$serverName.conf
 
     echo "   * Reloading apache.."
     service apache2 reload
@@ -407,9 +410,7 @@ do
             # Creating vars 
             userDir=$userBasePath/$userName
             serverDir=$userDir/$serverName
-            
             ftpUser=$(echo "$serverName" | tr . -)
-            # Generate random password
             ftpPassword=$(openssl rand -base64 10)
             
             _createHost
