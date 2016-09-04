@@ -100,8 +100,7 @@ function _createHost()
     ServerName $serverName
     ServerAlias $serverAlias
 
-    ErrorLog $serverDir/log/error.log
-    CustomLog $serverDir/log/access.log combined" > /etc/apache2/sites-enabled/$serverName.conf
+    ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-enabled/$serverName.conf
         
         if [ $sslSecured == 1 ]
         then
@@ -119,8 +118,7 @@ function _createHost()
         ServerName $serverName
         ServerAlias $serverAlias
 
-        ErrorLog $serverDir/log/error.log
-        CustomLog $serverDir/log/access.log combined" >> /etc/apache2/sites-enabled/$serverName.conf
+        ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-enabled/$serverName.conf
         
             if [ $chrootHost == 1 ]
             then
@@ -313,6 +311,9 @@ function _addSSL()
 
     # Touching file to know we have an ssl cert
     touch $serverDir/.sslCert
+
+    # Removing temporary files created by Let's Encrypt
+    rm -rf $serverDir/www/.well-known
 }
 
 function _removeSSL()

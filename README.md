@@ -27,8 +27,8 @@ Apache Mods:
   Used vars:
   $serverName --> Specified by -s|--server
   $serverDir --> $userDir/$serverName
-  $userName --> Specified by -u|--user plus '-www' suffix
-  $userDir --> /home/$userName/
+  $userName --> Specified by -u|--user plus suffix in script begin
+  $userDir --> $userBasePath/$userName
   
   /
   `home/
@@ -41,7 +41,6 @@ Apache Mods:
      |<.sslCert> --> File that specifies that the server have ssl certificate
      |log/ --> Log dir
       |error.log --> Apache error log 
-      |access.log --> Apache access log
       `phperror.log --> PHP Error log
      `www/ --> Web dir 
 ```
