@@ -141,26 +141,28 @@ function _createHost()
             echo "</VirtualHost>" >> /etc/apache2/sites-enabled/$serverName.conf
         fi
         
-            # Configuring CGI
-            echo "Creating php-fpm pool for '$serverName'..."
-            echo "[$serverName]
+        # Configuring CGI
+        echo "Creating php-fpm pool for '$serverName'..."
+        echo "[$serverName]
 ; Define socket
 listen = /run/php/php-fpm.$serverName.sock
 
 ; Define env var for this instance
 env[DOCUMENT_ROOT] = $serverDir/www/" > $serverDir/pool.cfg
 
-            if [ $chrootHost == 1 ]
-            then
-                echo "; Chrooting dir
+        if [ $chrootHost == 1 ]
+        then
+            echo -e "\n; Chrooting dir
 chroot = $serverDir/
-chdir = /www/" >> $serverDir/pool.cfg
-            fi
-            echo "; PHP Configuration
-            
-            
+
 ; Default pool settings
-user = $userName
+chdir = /www/" >> $serverDir/pool.cfg
+        else
+            echo -e "\n; Default pool settings
+chdir = /" >> $serverDir/pool.cfg
+        fi
+     
+        echo "user = $userName
 group = $userName
 listen.owner = $userName
 listen.group = $userName
@@ -169,7 +171,21 @@ pm = ondemand
 pm.max_children = 5
 pm.start_servers = 2
 pm.min_spare_servers = 1
-pm.max_spare_servers = 3" >> $serverDir/pool.cfg
+pm.max_spare_servers = 3
+
+; Redirect worker stdout and stderr into main error log. If not set, stdout and
+; stderr will be redirected to /dev/null according to FastCGI specs.
+catch_workers_output = yes
+
+; PHP Settings
+php_flag[display_errors] = on
+php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
+        if [ $chrootHost == 1 ]
+        then
+            echo "php_admin_value[error_log] = /log/phperror.log" >> $serverDir/pool.cfg
+        else
+            echo "php_admin_value[error_log] = $serverDir/log/phperror.log" >> $serverDir/pool.cfg
+        fi
 
         # PHP requirements in chroot
         if [ $chrootHost == 1 ]
@@ -178,7 +194,6 @@ pm.max_spare_servers = 3" >> $serverDir/pool.cfg
             mkdir -p $serverDir/{etc,usr/share,var/lib/php/sessions,tmp}
             cp /etc/localtime $serverDir/etc
             cp -r /usr/share/zoneinfo $serverDir/usr/share/ 
-        
         fi
         
         # Checking for PHP-FPM include config
@@ -208,8 +223,8 @@ pm.max_spare_servers = 3" >> $serverDir/pool.cfg
         chown $userName:$userName $serverDir -R
         echo "   * Fixed owner to '$userName'"
 
-        echo "Disabling access to '$serverDir/{log,pool.cfg,userpass}/' to user '$userName' recursively..."
-        chmod 466 $serverDir/{log,pool.cfg,userpass} -R
+        echo "Disabling access to '$serverDir/{pool.cfg,userpass}' to user '$userName'..."
+        chmod 466 $serverDir/{pool.cfg,userpass}
         echo "   * Fixed permissions to '466'..."
     else
 	echo -e "Yes\n"

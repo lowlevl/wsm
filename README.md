@@ -40,5 +40,8 @@ Apache Mods:
      |<tmp,var,etc> --> Dirs for chroot and php
      |<.sslCert> --> File that specifies that the server have ssl certificate
      |log/ --> Log dir
+      |error.log --> Apache error log 
+      |access.log --> Apache access log
+      `phperror.log --> PHP Error log
      `www/ --> Web dir 
 ```
