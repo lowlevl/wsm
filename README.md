@@ -27,8 +27,8 @@ Apache Mods:
   Used vars:
   $serverName --> Specified by -s|--server
   $serverDir --> $userDir/$serverName
-  $userName --> Specified by -u|--user
-  $userDir --> /home/$userName-www/
+  $userName --> Specified by -u|--user plus '-www' suffix
+  $userDir --> /home/$userName/
   
   /
   `home/
