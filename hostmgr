@@ -407,8 +407,11 @@ do
             # Creating vars 
             userDir=$userBasePath/$userName
             serverDir=$userDir/$serverName
+            
             ftpUser=$(echo "$serverName" | tr . -)
-            ftpPassword=$(openssl rand -base64 12)
+            # Generate random password
+            ftpPassword=$(openssl rand -base64 10)
+            
             _createHost
 
             # Applying conf
