@@ -7,6 +7,7 @@ Packages:
   - apache2
   - php
   - php-fpm
+  - pure-ftpd
 
 Apache Mods:
   - proxy
