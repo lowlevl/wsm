@@ -240,7 +240,6 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
         fi
         
         # Enabling site
-        echo "Enabling site '$serverName'."
         a2ensite $serverName
     else
         echo -e "Yes\n"
@@ -256,6 +255,9 @@ function _removeHost()
     if [ -f /etc/apache2/sites-available/$serverName.conf ] && [ -d "$serverDir" ]
     then
 	echo "Ok"
+        
+        # Disabling site
+        a2dissite $serverName
         
         # Revoking and removing ssl cert
         if [ -f "$serverDir/.sslCert" ]
