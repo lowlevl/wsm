@@ -1,5 +1,4 @@
 Here are the functionalities i will add to this project :
-- 'suspend/resume' commands, to supend or resume vhost.
 - 'kickuser' command to destroy all vhost of a specified user.
 - 'ssl' command to enable or disable ssl on sites
 - even more, publish an issue to propose me something !
