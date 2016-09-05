@@ -90,7 +90,7 @@ function _createHost()
         mkdir $serverDir/www
         echo "   + $serverDir/log"
         mkdir $serverDir/log
-        
+
         # Creating default served file
         echo "   + Copying default page to the user ~/www/ dir"
         cp index.php $serverDir/www/index.php
@@ -251,10 +251,10 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
         fi
 
         # Reloading php-fpm
-        echo -ne "\nReloading php-fpm.."
+        echo -ne "\nReloading php-fpm.. "
         service php*-fpm restart
         echo "Ok."
-        
+
         # Enabling site
         $0 resume -s $serverName
     else
@@ -290,12 +290,12 @@ function _removeHost()
         # Deleting apache virtual server
         rm -f /etc/apache2/sites-available/$serverName.conf
         echo "   - Apache configuration for '$serverName' removed."
-        
+
         # Reloading php-fpm
-        echo -ne "\nReloading php-fpm.."
+        echo -ne "\nReloading php-fpm.. "
         service php*-fpm restart
         echo "Ok."
-        
+
         # Reloading apache2
         echo -n "Reloading apache2.. "
         service apache2 restart
@@ -327,7 +327,7 @@ function _addSSL()
     echo -n "Reloading apache2.. "
     service apache2 restart
     echo "Ok."
-    
+
     echo "   *** Generating certificate ***"
     if [ ! -z $serverAlias ] # Check if aliases
     then
@@ -480,7 +480,7 @@ do
             ftpUser=$(echo "$serverName" | tr . -)
 
             _removeHost
-            
+
             exit 0
         ;;
         suspend)
@@ -530,7 +530,7 @@ do
             echo -n "Reloading apache2.. "
             service apache2 restart
             echo "Ok."
-            
+
             exit 0
         ;;
         resume)
@@ -580,7 +580,7 @@ do
             echo -n "Reloading apache2.. "
             service apache2 restart
             echo "Ok."
-            
+
             exit 0
         ;;
         -h | --help)
