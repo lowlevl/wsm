@@ -10,6 +10,7 @@ Packages:
   - pure-ftpd
 
 Apache Mods:
+  - rewrite
   - proxy
   - proxy_fcgi
   - headers
@@ -32,16 +33,16 @@ Apache Mods:
   $userDir --> $userBasePath/$userName
   
   /
-  `home/
-   `$userDir/
-    |.wwwUser --> File that specifies that the user is created by this script
-    `$serverDir/
-     |pool.cfg --> PHP-Fpm pool config
-     |userpass --> Json file with user and password
-     |<tmp,var,etc> --> Dirs for chroot and php
-     |<.sslCert> --> File that specifies that the server have ssl certificate
-     |log/ --> Log dir
-      |error.log --> Apache error log 
-      `phperror.log --> PHP Error log
-     `www/ --> Web dir 
+  `- $userBasePath
+     `- $userDir/
+        |- .wwwUser --> File that specifies that the user is created by this script
+        `- $serverDir/
+           |- pool.cfg --> PHP-Fpm pool config
+           |- userpass --> Json file with user and password
+           |- <tmp,var,etc> --> Dirs for chroot and php
+           |- <.sslCert> --> File that specifies that the server have ssl certificate
+           |- www/ --> Web dir
+           `- log/ --> Log dir
+              |- error.log --> Apache error log 
+              `- phperror.log --> PHP Error log
 ```
