@@ -6,7 +6,7 @@ letsEncryptDir=/etc/letsencrypt
 adminEmail=root@yourserver.com
 
 userBasePath=/home/web
-userNameSuffix=
+userNameSuffix=-www
 # DO NOT EDIT AFTER HERE #
 
 # Vars
@@ -61,15 +61,15 @@ function _createHost()
             fi
 
             # Add an user
-            echo "Creating new user '$userName'..."
-            useradd $userName -d $userDir --create-home --system -s /usr/sbin/nologin
+            echo "Creating new user '$userName' with group 'www-data'..."
+            useradd $userName --gid www-data --create-home --home-dir $userDir --system -s /usr/sbin/nologin
 
             # Adding a lock file in user dir to protect other users from removing
             echo "Locking dir for '$userName'..."
             touch $userDir/.wwwUser
             
             echo "Disabling access to '$userDir/.wwwUser' to user '$userName'"
-            chmod 466 $userDir/.wwwUser
+            chmod 066 $userDir/.wwwUser
         fi
         
         # Making dirs
@@ -89,61 +89,61 @@ function _createHost()
         # Creating apache config file
         echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
         echo "<Directory $serverDir/www/>
-    Options -Indexes -FollowSymLinks +MultiViews
-    AllowOverride None
-    Require all granted
+  Options -Indexes -FollowSymLinks +MultiViews
+  AllowOverride None
+  Require all granted
 </Directory>
 <VirtualHost *:80>
+  ServerAdmin $adminEmail
+  DocumentRoot $serverDir/www/
+
+  ServerName $serverName
+  ServerAlias $serverAlias
+
+  ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-available/$serverName.conf
+        
+        if [ $sslSecured == 1 ]
+        then
+            echo -e "\n  <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTPS} off
+    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+  </IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+  <VirtualHost *:443>
     ServerAdmin $adminEmail
     DocumentRoot $serverDir/www/
 
     ServerName $serverName
     ServerAlias $serverAlias
 
-    ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-available/$serverName.conf
-        
-        if [ $sslSecured == 1 ]
-        then
-            echo "    <IfModule mod_rewrite.c>
-        RewriteEngine on
-        RewriteCond %{HTTPS} off
-        RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-    </IfModule>
-</VirtualHost>
-<IfModule mod_ssl.c>
-    <VirtualHost *:443>
-        ServerAdmin $adminEmail
-        DocumentRoot $serverDir/www/
-
-        ServerName $serverName
-        ServerAlias $serverAlias
-
-        ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-available/$serverName.conf
+    ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-available/$serverName.conf
         
             if [ $chrootHost == 1 ]
             then
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
             fi
-            echo "        Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+            echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
-        SSLEngine on
-        SSLProtocol all -SSLv2 -SSLv3
-        SSLHonorCipherOrder on
-        SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-        SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-        SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-        SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-        SSLOptions +StdEnvVars +ExportCertData
-    </VirtualHost>
+    SSLEngine on
+    SSLProtocol all -SSLv2 -SSLv3
+    SSLHonorCipherOrder on
+    SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+    SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+    SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+    SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+    SSLOptions +StdEnvVars +ExportCertData
+  </VirtualHost>
 </IfModule>" >> /etc/apache2/sites-available/$serverName.conf
         else
             if [ $chrootHost == 1 ]
             then
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo "        ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
             fi
             echo "</VirtualHost>" >> /etc/apache2/sites-available/$serverName.conf
         fi
@@ -170,9 +170,9 @@ chdir = /" >> $serverDir/pool.cfg
         fi
      
         echo "user = $userName
-group = $userName
+group = www-data
 listen.owner = $userName
-listen.group = $userName
+listen.group = www-data
 listen.mode = 0666
 pm = ondemand
 pm.max_children = 5
@@ -215,7 +215,7 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
 
         # Creating new ftp user
         echo "Adding ftp user '$ftpUser'..."
-        ( echo $ftpPassword ; echo $ftpPassword ) | pure-pw useradd $ftpUser -u $userName -d $serverDir/www/ -m > /dev/null
+        ( echo $ftpPassword ; echo $ftpPassword ) | pure-pw useradd $ftpUser -u $userName -g www-data -d $serverDir/www/ -m > /dev/null
         pure-pw mkdb
         service pure-ftpd restart
 
@@ -223,24 +223,26 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
         echo -e "{\n    \"username\": \"$ftpUser\",\n    \"password\": \"$ftpPassword\"\n}" > $serverDir/userpass
 
         # Fixing permissions
-        echo "Gaining access to '$serverDir/' to user '$userName' recursively..."
-        chmod 755 $serverDir -R
-        echo "   * Fixed permissions to '755'..."
-        chown $userName:$userName $serverDir -R
-        echo "   * Fixed owner to '$userName'"
+        echo "Gaining access to '$serverDir/' to user '$userName' and group 'www-data' recursively..."
+        chmod 750 $serverDir -R
+        echo "   * Fixed permissions to '750'..."
+        chown $userName:www-data $serverDir -R
+        echo "   * Fixed owner to '$userName:www-data'"
 
         if [ $sslSecured == 1 ]
         then
-            echo "Disabling access to '$serverDir/{pool.cfg,userpass,.sslCert}' to user '$userName'..."
-            chmod 466 $serverDir/{pool.cfg,userpass,.sslCert}
-        echo "   * Fixed permissions to '466'..."
+            echo "Disabling access to '$serverDir/{pool.cfg,userpass,.sslCert}' to all user..."
+            chmod 005 $serverDir/{pool.cfg,userpass,.sslCert}
+            echo "   * Fixed permissions to '005'..."
         else
-            echo "Disabling access to '$serverDir/{pool.cfg,userpass}' to user '$userName'..."
-            chmod 466 $serverDir/{pool.cfg,userpass}
+            echo "Disabling access to '$serverDir/{pool.cfg,userpass}' to all user..."
+            chmod 005 $serverDir/{pool.cfg,userpass}
+            echo "   * Fixed permissions to '005'..."
         fi
         
         # Enabling site
-        a2ensite $serverName
+        echo "Enabling site '$serverName'."
+        a2ensite $serverName > /dev/null
     else
         echo -e "Yes\n"
         
@@ -257,7 +259,8 @@ function _removeHost()
 	echo "Ok"
         
         # Disabling site
-        a2dissite $serverName
+        echo "Disabling site '$serverName'."
+        a2dissite $serverName > /dev/null
         
         # Revoking and removing ssl cert
         if [ -f "$serverDir/.sslCert" ]
@@ -402,8 +405,8 @@ do
             fi
             
             # Check if username is taken by an user who is not a www user.
-            getent passwd $userName >/dev/null 2>&1 && userExists=true
-            if [[ $userExists == true ]] && [[ ! -f $userBasePath/$userName/.wwwUser ]]
+            getent passwd $userName >/dev/null 2>&1 && userExists=1
+            if [ "$userExists" == 1 ] && [ ! -f $userBasePath/$userName/.wwwUser ]
             then
                 echo "Error: The username '$userName' exists and is not a www user."
                 exit 1
