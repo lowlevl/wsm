@@ -2,5 +2,4 @@ Here are the functionalities i will add to this project :
 - 'kickuser' command to destroy all vhost of a specified user.
 - 'ssl' command to enable or disable ssl on sites
 - Auto updater
-- Auto services config
 - even more, publish an issue to propose me something !

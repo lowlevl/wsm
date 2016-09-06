@@ -10,6 +10,7 @@ userNameSuffix=-www
 # DO NOT EDIT AFTER HERE #
 
 # Vars
+colorSupport=$(tput colors)
 sslSecured=0
 chrootHost=1
 
@@ -19,10 +20,15 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
+# Check for update on repo
+echo "Checking for updates.."
+
 function _help()
 {
     echo -e "Usage: $0 {add|remove|suspend|resume} [-h|--help]\n"
+    echo "Virtual server creation:"
     echo "  add:            Add a virtual server, and create an user"
+    echo -e "\nVirtual server alteration/modification:"
     echo "  remove:         Remove an existing virtual server."
     echo "  suspend:        Suspend an existing virtual server."
     echo "  resume:         Resume an existing virtual server."
@@ -54,6 +60,94 @@ function _helpResume()
 {
     echo -e "Usage: $0 resume -s|--server <name>\n"
     exit 1
+}
+
+function _checkAll()
+{
+    # Check for installed dependencies
+    echo "Checking dependencies.."
+
+    # Apache
+    echo -n "  * Apache2 install status.. "
+    if ! dpkg -l | grep '^ii  apache2 ' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+    
+    # Mod rewrite
+    echo -n "    [mod] rewrite_module enable status.. "
+    if ! apache2ctl -M | grep -e 'rewrite_module' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+    
+    # Mod proxy
+    echo -n "    [mod] proxy_module enable status.. "
+    if ! apache2ctl -M | grep -e 'proxy_module' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+    
+    # Mod proxy_fcgi
+    echo -n "    [mod] proxy_fcgi enable status.. "
+    if ! apache2ctl -M | grep -e 'proxy_fcgi' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+    
+    # Mod headers
+    echo -n "    [mod] headers_module enable status.. "
+    if ! apache2ctl -M | grep -e 'headers_module' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+
+    # PHP
+    echo -ne "\n  * PHP install status.. "
+    if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5 ' -e '^ii  php ' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+    fi
+
+    # php-fpm
+    echo -n "    [cgi] php*-fpm install status.. "
+    if ! dpkg -l | grep '^ii  php.*-fpm' > /dev/null
+    then
+        echo "Failed"
+        exit 1
+    else
+        echo "Ok"
+        echo -n "       -> php*-fpm conf.. "
+        if ! grep -qF "include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
+        then
+            echo "Warning, auto-configured."
+            sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
+        else
+            echo "Ok"
+        fi
+    fi
+    
+    touch .allChecked
+    
+    echo -e "\nEverything OK."
 }
 
 function _createHost()
@@ -218,13 +312,6 @@ php_admin_flag[log_errors] = on" >> $serverDir/pool.cfg
             cp -r /usr/share/zoneinfo $serverDir/usr/share/
         fi
 
-        # Checking for PHP-FPM include config
-        if ! grep -qF "include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-        then
-            echo "Info: No include for pools in php-fpm config, automatically adding."
-            sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-        fi
-
         # Creating new ftp user
         echo "Adding ftp user '$ftpUser'..."
         ( echo $ftpPassword ; echo $ftpPassword ) | pure-pw useradd $ftpUser -u $userName -g www-data -d $serverDir/www/ -m > /dev/null
@@ -362,6 +449,11 @@ while [ ! -z $1 ]
 do
     case $1 in
         add)
+            if [ ! -f .allChecked ]
+            then
+                echo "You must run '$0 checkall' before you can use this script."
+                exit 1
+            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -443,6 +535,11 @@ do
             exit 0
         ;;
         remove)
+            if [ ! -f .allChecked ]
+            then
+                echo "You must run '$0 checkall' before you can use this script."
+                exit 1
+            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -484,6 +581,11 @@ do
             exit 0
         ;;
         suspend)
+            if [ ! -f .allChecked ]
+            then
+                echo "You must run '$0 checkall' before you can use this script."
+                exit 1
+            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -534,6 +636,11 @@ do
             exit 0
         ;;
         resume)
+            if [ ! -f .allChecked ]
+            then
+                echo "You must run '$0 checkall' before you can use this script."
+                exit 1
+            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -581,6 +688,11 @@ do
             service apache2 restart
             echo "Ok."
 
+            exit 0
+        ;;
+        checkall)
+            _checkAll
+            
             exit 0
         ;;
         -h | --help)
