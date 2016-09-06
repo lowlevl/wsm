@@ -10,7 +10,6 @@ userNameSuffix=-www
 # DO NOT EDIT AFTER HERE #
 
 # Vars
-colorSupport=$(tput colors)
 sslSecured=0
 chrootHost=1
 
