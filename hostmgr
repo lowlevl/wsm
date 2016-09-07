@@ -231,9 +231,9 @@ function _createHost()
 
             if [ $chrootHost == 1 ]
             then
-                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> /etc/apache2/sites-available/$serverName.conf
             fi
             echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
@@ -250,9 +250,9 @@ function _createHost()
         else
             if [ $chrootHost == 1 ]
             then
-                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> /etc/apache2/sites-available/$serverName.conf
             else
-                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www" >> /etc/apache2/sites-available/$serverName.conf
+                echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> /etc/apache2/sites-available/$serverName.conf
             fi
             echo "</VirtualHost>" >> /etc/apache2/sites-available/$serverName.conf
         fi
