@@ -19,9 +19,6 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-# Check for update on repo
-echo "Checking for updates.."
-
 function _help()
 {
     echo -e "Usage: $0 {add|remove|suspend|resume} [-h|--help]\n"
@@ -64,7 +61,7 @@ function _helpResume()
 function _checkAll()
 {
     # Check for installed dependencies
-    echo "Checking dependencies.."
+    echo "Verifying system to find if the script can be executed.."
 
     # Apache
     echo -n "  * Apache2 install status.. "
@@ -443,16 +440,21 @@ function _removeSSL()
     rm $serverDir/.sslCert
 }
 
+# Check for update on repo
+echo "Checking for updates.."
+
+# Check if dependencies are installed 
+if [ ! -f .allChecked ]
+then
+    _checkAll
+    exit 0
+fi
+
 # Parsing arguments
 while [ ! -z $1 ]
 do
     case $1 in
         add)
-            if [ ! -f .allChecked ]
-            then
-                echo "You must run '$0 checkall' before you can use this script."
-                exit 1
-            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -534,11 +536,6 @@ do
             exit 0
         ;;
         remove)
-            if [ ! -f .allChecked ]
-            then
-                echo "You must run '$0 checkall' before you can use this script."
-                exit 1
-            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -580,11 +577,6 @@ do
             exit 0
         ;;
         suspend)
-            if [ ! -f .allChecked ]
-            then
-                echo "You must run '$0 checkall' before you can use this script."
-                exit 1
-            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -635,11 +627,6 @@ do
             exit 0
         ;;
         resume)
-            if [ ! -f .allChecked ]
-            then
-                echo "You must run '$0 checkall' before you can use this script."
-                exit 1
-            fi
             while [ ! -z $1 ]
             do
                 shift
@@ -687,11 +674,6 @@ do
             service apache2 restart
             echo "Ok."
 
-            exit 0
-        ;;
-        checkall)
-            _checkAll
-            
             exit 0
         ;;
         -h | --help)
