@@ -21,13 +21,15 @@ fi
 
 function _help()
 {
-    echo -e "Usage: $0 {add|remove|suspend|resume} [-h|--help]\n"
+    echo -e "Usage: $0 {add|remove|suspend|resume|update} [-h|--help]\n"
     echo "Virtual server creation:"
     echo "  add:            Add a virtual server, and create an user"
     echo -e "\nVirtual server alteration/modification:"
     echo "  remove:         Remove an existing virtual server."
     echo "  suspend:        Suspend an existing virtual server."
     echo "  resume:         Resume an existing virtual server."
+    echo -e "\nSpecial:"
+    echo "  update:         Check for update in github repo."
     exit 1
 }
 
@@ -467,9 +469,6 @@ function _removeSSL()
     rm $serverDir/.sslCert
 }
 
-# Check for update on repo
-echo "Checking for updates.."
-
 # Check if dependencies are installed
 if [ ! -f .allChecked ]
 then
@@ -704,6 +703,28 @@ do
             service apache2 restart
             echo "Ok."
 
+            exit 0
+        ;;
+        update)
+            # Check for update on repo
+            echo -n "Checking for updates.. "
+            currentVersion=$(git rev-parse HEAD)
+            remoteVersion=$(git ls-remote origin | grep -o '^\S*' | head -n 1)
+            
+            if [ $currentVersion == $remoteVersion ]
+            then
+                echo "Up to date."
+            else
+                echo "Update found !"
+                echo -n "  * Fetching from repo.. "
+                git fetch --all > /dev/null
+                echo "Done."
+                
+                echo -n "  * Applying update.. "
+                git reset --hard origin/master > /dev/null
+                echo "Done."
+            fi
+            
             exit 0
         ;;
         -h | --help)
