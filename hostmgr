@@ -202,7 +202,7 @@ function _createHost()
         echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
         echo "<Directory $serverDir/www/>
   Options -Indexes -FollowSymLinks +MultiViews
-  AllowOverride None
+  AllowOverride AuthConfig Indexes
   Require all granted
 </Directory>
 <VirtualHost *:80>
