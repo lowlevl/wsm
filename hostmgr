@@ -11,6 +11,7 @@ userNameSuffix=$(cat conf.d/userNameSuffix)
 # Vars
 sslSecured=0
 chrootHost=1
+hostRedir=0
 
 # Standard user fail protection
 if [ "$(id -u)" != "0" ]; then
@@ -36,8 +37,12 @@ function _helpAdd()
     echo "Options:"
     echo "  --ssl:          If specified, a Let's Encrypt certificate will be"
     echo "                  generated and will be applied to the virtual server"
-    echo "  --no-chroot:    Do not chroot the virtual server, only for websites"
+    echo -e "\n  --no-chroot:    Do not chroot the virtual server, only for websites"
     echo "                  who uses external programs"
+    echo -e "\n  --redir:        With this option enabled, the server will always"
+    echo "                  redirect the client to the first domain entered"
+    echo "                  Example: $0 add -s www.example.com -s example.com"
+    echo "                  will always redirect to www.example.com"
     exit 1
 }
 function _helpRemove()
@@ -71,7 +76,7 @@ function _checkAll()
     else
         echo "Ok"
     fi
-    
+
     # Mod rewrite
     echo -n "    [mod] rewrite_module enable status.. "
     if ! apache2ctl -M | grep -e 'rewrite_module' > /dev/null
@@ -81,7 +86,7 @@ function _checkAll()
     else
         echo "Ok"
     fi
-    
+
     # Mod proxy
     echo -n "    [mod] proxy_module enable status.. "
     if ! apache2ctl -M | grep -e 'proxy_module' > /dev/null
@@ -91,7 +96,7 @@ function _checkAll()
     else
         echo "Ok"
     fi
-    
+
     # Mod proxy_fcgi
     echo -n "    [mod] proxy_fcgi enable status.. "
     if ! apache2ctl -M | grep -e 'proxy_fcgi' > /dev/null
@@ -101,7 +106,7 @@ function _checkAll()
     else
         echo "Ok"
     fi
-    
+
     # Mod headers
     echo -n "    [mod] headers_module enable status.. "
     if ! apache2ctl -M | grep -e 'headers_module' > /dev/null
@@ -139,9 +144,9 @@ function _checkAll()
             echo "Ok"
         fi
     fi
-    
+
     touch .allChecked
-    
+
     echo -e "\nEverything OK."
 }
 
@@ -207,6 +212,16 @@ function _createHost()
 
   ErrorLog $serverDir/log/error.log" > /etc/apache2/sites-available/$serverName.conf
 
+        # Rewrites
+        if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
+        then
+            echo -e "\n  <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTP_HOST} !^$serverName$
+    RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
+  </IfModule>" >> /etc/apache2/sites-available/$serverName.conf
+        fi
+        
         if [ $sslSecured == 1 ]
         then
             echo -e "\n  <IfModule mod_rewrite.c>
@@ -224,7 +239,17 @@ function _createHost()
     ServerAlias $serverAlias
 
     ErrorLog $serverDir/log/error.log" >> /etc/apache2/sites-available/$serverName.conf
-
+    
+                    # Rewrites
+                    if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
+                    then
+                        echo -e "\n  <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTP_HOST} !$serverName
+    RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
+</IfModule>" >> /etc/apache2/sites-available/$serverName.conf
+        fi
+            
             if [ $chrootHost == 1 ]
             then
                 echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> /etc/apache2/sites-available/$serverName.conf
@@ -445,7 +470,7 @@ function _removeSSL()
 # Check for update on repo
 echo "Checking for updates.."
 
-# Check if dependencies are installed 
+# Check if dependencies are installed
 if [ ! -f .allChecked ]
 then
     _checkAll
@@ -501,6 +526,9 @@ do
                     ;;
                     --no-chroot)
                         chrootHost=0
+                    ;;
+                    --redir)
+                        hostRedir=1
                 esac
             done
 
