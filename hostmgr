@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# Defines
-letsEncryptExec=letsencrypt
-letsEncryptDir=/etc/letsencrypt
-adminEmail=root@yourserver.com
+# Config from conf.d/ dir
+letsEncryptExec=$(cat conf.d/letsEncryptExec)
+letsEncryptDir=$(cat conf.d/letsEncryptDir)
+adminEmail=$(cat conf.d/adminEmail)
 
-userBasePath=/home/web
-userNameSuffix=-www
-# DO NOT EDIT AFTER HERE #
+userBasePath=$(cat conf.d/userBasePath)
+userNameSuffix=$(cat conf.d/userNameSuffix)
 
 # Vars
 sslSecured=0
@@ -420,7 +419,7 @@ function _addSSL()
     fi
 
     # Removing apache cfg file needed by Let's Encrypt
-    rm /etc/apache2/sites-enabled/$serverName.conf
+      rm /etc/apache2/sites-enabled/$serverName.conf
 
     # Touching file to know we have an ssl cert
     touch $serverDir/.sslCert
