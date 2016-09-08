@@ -404,7 +404,7 @@ function _addSSL()
 
   ServerName $serverName
   ServerAlias $serverAlias
-</VirtualHost>" > /etc/apache2/sites-available/$serverName.conf
+</VirtualHost>" > /etc/apache2/sites-enabled/$serverName.conf
 
     # Reloading apache2
     echo -n "Reloading apache2.. "
@@ -418,6 +418,9 @@ function _addSSL()
     else
         $letsEncryptExec certonly --webroot --webroot-path $serverDir/www/ -d $serverName
     fi
+
+    # Removing apache cfg file needed by Let's Encrypt
+    rm /etc/apache2/sites-enabled/$serverName.conf
 
     # Touching file to know we have an ssl cert
     touch $serverDir/.sslCert
