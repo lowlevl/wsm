@@ -473,6 +473,7 @@ function _removeSSL()
 if [ ! -f .allChecked ]
 then
     _checkAll
+    echo "Now you can retype your command."
     exit 0
 fi
 
