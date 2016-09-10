@@ -201,7 +201,7 @@ function _createHost()
         # Creating apache config file
         echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
         echo "<Directory $serverDir/www/>
-  Options -Indexes -FollowSymLinks +MultiViews
+  Options -Indexes +FollowSymLinks
   AllowOverride AuthConfig Indexes
   Require all granted
 </Directory>
