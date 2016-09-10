@@ -200,14 +200,14 @@ function _createHost()
 
         # Creating apache config file
         echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
-        echo "<Directory $serverDir/www/>
+        echo "<Directory $serverDir/www>
   Options -Indexes +FollowSymLinks
   AllowOverride AuthConfig Indexes
   Require all granted
 </Directory>
 <VirtualHost *:80>
   ServerAdmin $adminEmail
-  DocumentRoot $serverDir/www/
+  DocumentRoot $serverDir/www
 
   ServerName $serverName
   ServerAlias $serverAlias
@@ -235,7 +235,7 @@ function _createHost()
 <IfModule mod_ssl.c>
   <VirtualHost *:443>
     ServerAdmin $adminEmail
-    DocumentRoot $serverDir/www/
+    DocumentRoot $serverDir/www
 
     ServerName $serverName
     ServerAlias $serverAlias
@@ -420,14 +420,12 @@ function _addSSL()
 {
     echo -e "\nGenerating SSL Let's Encrypt Certificate..."
     echo "   * Setting up web config for Let's Encrypt activation.."
-    echo "<Directory $serverDir/www/>
-  Options -Indexes -FollowSymLinks +MultiViews
-  AllowOverride None
+    echo "<Directory $serverDir/www>
   Require all granted
 </Directory>
 <VirtualHost *:80>
   ServerAdmin $adminEmail
-  DocumentRoot $serverDir/www/
+  DocumentRoot $serverDir/www
 
   ServerName $serverName
   ServerAlias $serverAlias
@@ -544,6 +542,12 @@ do
             if [ -z $userName ]
             then
                 echo "Error: No user name specified. Try '$0 add --help'"
+                exit 1
+            fi
+
+            if [ $hostRedir == 1 ] && [ -z $serverAlias ]
+            then
+                echo "Error: You can't request redirecting all aliases to domain, there isn't any alias."
                 exit 1
             fi
 
