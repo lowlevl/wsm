@@ -164,6 +164,7 @@ function _createHost()
       then
       echo "Info: The dir '$userBasePath' was not created, creating."
       mkdir -p "$userBasePath"
+      chmod 555 "$userBasePath"
     fi
 
     # Add an user
@@ -309,11 +310,10 @@ listen.owner = $userName
 listen.group = www-data
 listen.mode = 0666
 
-pm = dynamic
-pm.max_children = 6
-pm.start_servers = 2
-pm.min_spare_servers = 1
-pm.max_spare_servers = 6
+pm = ondemand
+pm.max_children = 4
+pm.process_idle_timeout = 10s
+pm.max_requests = 200
 
 ; Redirect worker stdout and stderr into main error log. If not set, stdout and
 ; stderr will be redirected to /dev/null according to FastCGI specs.
@@ -555,7 +555,7 @@ do
 
       # Check if username is taken by an user who is not a www user.
       getent passwd "$userName" >/dev/null 2>&1 && userExists=1
-      if [ $userExists == 1 ] && [ ! -f "$userBasePath/$userName/.wwwUser" ]
+      if [ "$userExists" == 1 ] && [ ! -f "$userBasePath/$userName/.wwwUser" ]
       then
         echo "Error: The username '$userName' exists and is not a www user."
         exit 1
