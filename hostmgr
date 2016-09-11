@@ -312,8 +312,8 @@ listen.mode = 0666
 
 pm = ondemand
 pm.max_children = 4
-pm.process_idle_timeout = 10s
-pm.max_requests = 200
+pm.process_idle_timeout = 8s
+pm.max_requests = 256
 
 ; Redirect worker stdout and stderr into main error log. If not set, stdout and
 ; stderr will be redirected to /dev/null according to FastCGI specs.
@@ -332,10 +332,16 @@ php_admin_flag[log_errors] = on" >> "$serverDir/pool.cfg"
     # PHP requirements in chroot
     if [ $chrootHost == 1 ]
     then
-      echo "Adding PHP dependencies in chroot directory"
-      mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp}
-      cp "/etc/localtime" "$serverDir/etc"
-      cp -r "/usr/share/zoneinfo" "$serverDir/usr/share/"
+      echo "Copying files to setup chroot.."
+      echo -n " * Local time.."
+      mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev}
+      cp /etc/localtime "$serverDir/etc"
+      cp -r /usr/share/zoneinfo "$serverDir/usr/share"
+      echo "Ok"
+      
+      echo -n " * System files.."
+      cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
+      echo "Ok"
     fi
 
     # Creating new ftp user
@@ -350,17 +356,17 @@ php_admin_flag[log_errors] = on" >> "$serverDir/pool.cfg"
     # Fixing permissions
     echo -e "\nFixing permissions for better security.."
     chmod 750 "$serverDir" -R
-    echo "   * [$serverDir] Fixed permissions to '750'..."
+    echo "   * Fixed permissions to '750' to '*' in server dir."
     chown "$userName:www-data" "$serverDir" -R
-    echo "   * [$serverDir] Fixed owner to '$userName:www-data'"
+    echo "   * Fixed owner to '$userName:www-data' to '*' in server dir."
 
     if [ $sslSecured == 1 ]
     then
       chmod 005 "$serverDir"/{pool.cfg,userpass,.sslCert}
-      echo "   * [$serverDir/{pool.cfg,userpass,.sslCert}] Fixed permissions to '005'..."
+      echo "   * Fixed permissions to '005' to '{pool.cfg,userpass,.sslCert}' in server dir."
     else
       chmod 005 "$serverDir"/{pool.cfg,userpass}
-      echo "   * [$serverDir/{pool.cfg,userpass}] Fixed permissions to '005'..."
+      echo "   * Fixed permissions to '005' to '{pool.cfg,userpass}' in server dir."
     fi
 
     # Reloading php-fpm
