@@ -319,14 +319,22 @@ pm.max_requests = 256
 ; stderr will be redirected to /dev/null according to FastCGI specs.
 catch_workers_output = yes
 
-; PHP Settings
+; Pool collapsing fix
 php_admin_value[opcache.enable] = 0
+
+; Log file
 php_admin_flag[log_errors] = on" >> "$serverDir/pool.cfg"
     if [ $chrootHost == 1 ]
     then
-      echo "php_admin_value[error_log] = /log/phperror.log" >> "$serverDir/pool.cfg"
+      echo "php_admin_value[error_log] = /log/phperror.log
+
+; Restrict access
+php_admin_value[open_basedir]=/www/" >> "$serverDir/pool.cfg"
     else
-      echo "php_admin_value[error_log] = $serverDir/log/phperror.log" >> "$serverDir/pool.cfg"
+      echo "php_admin_value[error_log] = $serverDir/log/phperror.log
+
+; Restrict access
+php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/pool.cfg"
     fi
 
     # PHP requirements in chroot
