@@ -150,7 +150,7 @@ function _checkAll()
   # letsencrypt binary
   echo -ne "\n  * letsencrypt binary presence.. "
   if ! which "$letsEncryptExec" > /dev/null
-  then 
+  then
     echo "Failed"
     exit 1
   else
@@ -160,7 +160,7 @@ function _checkAll()
   # letsencrypt dir
   echo -ne "       -> letsencrypt directory presence.. "
   if [ ! -d "$letsEncryptDir" ]
-  then 
+  then
     echo "Failed"
     exit 1
   else
@@ -170,7 +170,7 @@ function _checkAll()
   # git install status
   echo -ne "\n  * git install status.. "
   if ! dpkg -l | grep '^ii  git ' > /dev/null
-  then 
+  then
     echo "Failed"
     exit 1
   else
@@ -254,7 +254,7 @@ function _createHost()
   RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
   </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
     fi
-    
+
     if [ $sslSecured == 1 ]
     then
       echo -e "\n  <IfModule mod_rewrite.c>
@@ -272,7 +272,7 @@ function _createHost()
     ServerAlias $serverAlias
 
     ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
-  
+
       # Rewrites
       if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
       then
@@ -282,14 +282,14 @@ function _createHost()
       RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
     </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
       fi
-    
+
       if [ $chrootHost == 1 ]
       then
         echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
       else
         echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
       fi
-      
+
       # Enable HSTS and ssl
       echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
@@ -376,7 +376,7 @@ php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/pool.cfg"
       cp /etc/localtime "$serverDir/etc"
       cp -r /usr/share/zoneinfo "$serverDir/usr/share"
       echo "Ok"
-      
+
       echo -n " * System files.."
       cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
       echo "Ok"
@@ -599,7 +599,7 @@ do
       fi
 
       # Check if username is taken by an user who is not a www user.
-      getent passwd "$userName" >/dev/null 2>&1 && userExists=1
+      getent passwd "$userName" > /dev/null 2>&1 && userExists=1
       if [ "$userExists" == 1 ] && [ ! -f "$userBasePath/$userName/.wwwUser" ]
       then
         echo "Error: The username '$userName' exists and is not a www user."
@@ -610,7 +610,7 @@ do
       userDir=$userBasePath/$userName
       serverDir=$userDir/$serverName
       ftpUser=$(echo "$serverName" | tr . -)
-      ftpPassword=$(openssl rand -base64 10)
+      ftpPassword=$(openssl rand -base64 12)
 
       _createHost
 
@@ -763,7 +763,7 @@ do
       echo -n "Checking for updates.. "
       currentVersion=$(git rev-parse HEAD)
       remoteVersion=$(git ls-remote origin | grep -o '^\S*' | head -n 1)
-      
+
       if [ "$currentVersion" == "$remoteVersion" ]
       then
         echo "Up to date."
@@ -772,12 +772,12 @@ do
         echo -n "  * Fetching from repo.. "
         git fetch --all > /dev/null
         echo "Done."
-        
+
         echo -n "  * Applying update.. "
         git reset --hard origin/master > /dev/null
         echo "Done."
       fi
-      
+
       exit 0
     ;;
       -h | --help)
