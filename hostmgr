@@ -131,7 +131,7 @@ function _checkAll()
 
   # php-fpm
   echo -n "    [cgi] php*-fpm install status.. "
-  if ! dpkg -l | grep '^ii  php.*-fpm' > /dev/null
+  if ! dpkg -l | grep '^ii  php.*-fpm ' > /dev/null
   then
     echo "Failed"
     exit 1
@@ -145,6 +145,36 @@ function _checkAll()
     else
       echo "Ok"
     fi
+  fi
+
+  # letsencrypt binary
+  echo -ne "\n  * letsencrypt binary presence.. "
+  if ! which "$letsEncryptExec" > /dev/null
+  then 
+    echo "Failed"
+    exit 1
+  else
+    echo "Ok"
+  fi
+
+  # letsencrypt dir
+  echo -ne "       -> letsencrypt directory presence.. "
+  if [ ! -d "$letsEncryptDir" ]
+  then 
+    echo "Failed"
+    exit 1
+  else
+    echo "Ok"
+  fi
+
+  # git install status
+  echo -ne "\n  * git install status.. "
+  if ! dpkg -l | grep '^ii  git ' > /dev/null
+  then 
+    echo "Failed"
+    exit 1
+  else
+    echo "Ok"
   fi
 
   touch .allChecked
