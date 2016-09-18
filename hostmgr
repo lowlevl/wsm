@@ -192,21 +192,21 @@ function _createHost()
       # Check for userBasePath dir
       if [ ! -d "$userBasePath" ]
       then
-      echo "Info: The dir '$userBasePath' was not created, creating."
-      mkdir -p "$userBasePath"
-      chmod 555 "$userBasePath"
-    fi
+        echo "Info: The dir '$userBasePath' was not created, creating."
+        mkdir -p "$userBasePath"
+        chmod 555 "$userBasePath"
+      fi
 
-    # Add an user
-    echo "Creating new user '$userName' with group 'www-data'..."
-    useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
+      # Add an user
+      echo "Creating new user '$userName' with group 'www-data'..."
+      useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
 
-    # Adding a lock file in user dir to protect other users from removing
-    echo "Locking dir for '$userName'..."
-    touch "$userDir"/.www
+      # Adding a lock file in user dir to protect other users from removing
+      echo "Locking dir for '$userName'..."
+      touch "$userDir"/.www
 
-    echo "Disabling access to '$userDir/.www' to user '$userName'"
-    chmod 066 "$userDir"/.www
+      echo "Disabling access to '$userDir/.www' to user '$userName'"
+      chmod 066 "$userDir"/.www
     fi
 
     # Making dirs
