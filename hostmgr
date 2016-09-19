@@ -211,13 +211,13 @@ function _createHost()
 
     # Making dirs
     echo "Making dirs.."
-    echo "   + $serverDir"
+    echo "   + /"
     mkdir "$serverDir"
-    echo "   + $serverDir/www"
+    echo "   + /www"
     mkdir "$serverDir/www"
-    echo "   + $serverDir/log"
+    echo "   + /log"
     mkdir "$serverDir/log"
-    echo "   + $serverDir/conf.d"
+    echo "   + /conf.d"
     mkdir "$serverDir/conf.d"
 
     # Setting up default vhost
@@ -230,143 +230,8 @@ function _createHost()
       _addSSL
     fi
 
-    # Creating apache config file
-    echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
-    echo "<Directory $serverDir/www>
-  Options -Indexes +FollowSymLinks
-  AllowOverride AuthConfig Indexes
-  Require all granted
-</Directory>
-<VirtualHost *:80>
-  ServerAdmin $adminEmail
-  DocumentRoot $serverDir/www
-
-  ServerName $serverName
-  ServerAlias $serverAlias
-
-  ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
-
-    # Rewrites
-    if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
-    then
-      echo -e "\n  <IfModule mod_rewrite.c>
-  RewriteEngine on
-  RewriteCond %{HTTP_HOST} !^$serverName$
-  RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
-  </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
-
-    if [ $sslSecured == 1 ]
-    then
-      echo -e "\n  <IfModule mod_rewrite.c>
-  RewriteEngine on
-  RewriteCond %{HTTPS} off
-  RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-  </IfModule>
-</VirtualHost>
-<IfModule mod_ssl.c>
-  <VirtualHost *:443>
-    ServerAdmin $adminEmail
-    DocumentRoot $serverDir/www
-
-    ServerName $serverName
-    ServerAlias $serverAlias
-
-    ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
-
-      # Rewrites
-      if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
-      then
-        echo -e "\n    <IfModule mod_rewrite.c>
-      RewriteEngine on
-      RewriteCond %{HTTP_HOST} !$serverName
-      RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
-    </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-      fi
-
-      if [ $chrootHost == 1 ]
-      then
-        echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-      else
-        echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-      fi
-
-      # Enable HSTS and ssl
-      echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
-
-    SSLEngine on
-    SSLProtocol all -SSLv2 -SSLv3
-    SSLHonorCipherOrder on
-    SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-    SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-    SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-    SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-    SSLOptions +StdEnvVars +ExportCertData
-  </VirtualHost>
-</IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-    else
-      if [ $chrootHost == 1 ]
-      then
-        echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-      else
-        echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-      fi
-        echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
-
-    # Configuring CGI
-    echo "Creating php-fpm pool for '$serverName'..."
-    echo "[$serverName]
-; Define socket
-listen = /run/php/php-fpm.$serverName.sock
-
-; Define env var for this instance
-env[DOCUMENT_ROOT] = $serverDir/www/" > "$serverDir/conf.d/pool.cfg"
-
-    if [ $chrootHost == 1 ]
-    then
-      echo -e "\n; Chrooting dir
-chroot = $serverDir/
-
-; Default pool settings
-chdir = /www/" >> "$serverDir/conf.d/pool.cfg"
-    else
-      echo -e "\n; Default pool settings
-chdir = /" >> "$serverDir/conf.d/pool.cfg"
-    fi
-
-    echo "user = $userName
-group = www-data
-listen.owner = $userName
-listen.group = www-data
-listen.mode = 0666
-
-pm = ondemand
-pm.max_children = 4
-pm.process_idle_timeout = 8s
-pm.max_requests = 256
-
-; Redirect worker stdout and stderr into main error log. If not set, stdout and
-; stderr will be redirected to /dev/null according to FastCGI specs.
-catch_workers_output = yes
-
-; Pool collapsing fix
-php_admin_value[opcache.enable] = 0
-
-; Log file
-php_admin_flag[log_errors] = on" >> "$serverDir/conf.d/pool.cfg"
-    if [ $chrootHost == 1 ]
-    then
-      echo "php_admin_value[error_log] = /log/phperror.log
-
-; Restrict access
-php_admin_value[open_basedir]=/www/" >> "$serverDir/conf.d/pool.cfg"
-    else
-      echo "php_admin_value[error_log] = $serverDir/log/phperror.log
-
-; Restrict access
-php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/conf.d/pool.cfg"
-    fi
+    # Generating config files
+    _generateConf
 
     # PHP requirements in chroot
     if [ $chrootHost == 1 ]
@@ -400,15 +265,8 @@ php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/conf.d/pool.cfg"
     # Ftp user
     _addUser
 
-    # Fixing permissions
-    echo -e "\nFixing permissions for better security.."
-    chmod 750 "$serverDir" -R
-    echo "   * Fixed permissions to '750' to '*' in server dir."
-    chown "$userName:www-data" "$serverDir" -R
-    echo "   * Fixed owner to '$userName:www-data' to '*' in server dir."
-
-    chmod 005 -R "$serverDir"/conf.d
-    echo "   * Fixed permissions to '005' to 'conf.d' dir."
+    # Fix permissions
+    _fixPerm
 
     # Reloading php-fpm
     echo -ne "\nReloading php-fpm.. "
@@ -442,7 +300,7 @@ function _removeHost()
     echo -e "\nRemoving files..."
     # Removing files
     rm -rf "$serverDir"
-    echo "   - '$serverDir/' dir deleted."
+    echo "   - Server dir deleted."
 
     # Deleting apache virtual server
     rm -f "/etc/apache2/sites-available/$serverName.conf"
@@ -510,7 +368,7 @@ function _removeSSL()
 }
 
 function _addUser() {
-  echo -n "Creating ftp user.. "
+  echo -ne "\nCreating ftp user.. "
   ( echo "$ftpPassword" ; echo "$ftpPassword" ) | pure-pw useradd "$ftpUser" -u "$userName" -g www-data -d "$serverDir/www/" -m > /dev/null
   pure-pw mkdb
   service pure-ftpd restart
@@ -521,10 +379,160 @@ function _addUser() {
 }
 
 function _removeUser() {
-  echo -n "Removing ftp user.. "
+  echo -ne "\nRemoving ftp user.. "
   pure-pw userdel "$ftpUser" -m
   pure-pw mkdb
   service pure-ftpd restart
+  echo "Done."
+}
+
+function _generateConf() {
+  # Creating apache config file
+  echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
+  echo "<Directory $serverDir/www>
+Options -Indexes +FollowSymLinks
+AllowOverride AuthConfig Indexes
+Require all granted
+</Directory>
+<VirtualHost *:80>
+ServerAdmin $adminEmail
+DocumentRoot $serverDir/www
+
+ServerName $serverName
+ServerAlias $serverAlias
+
+ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
+
+  # Rewrites
+  if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
+  then
+    echo -e "\n  <IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteCond %{HTTP_HOST} !^$serverName$
+RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
+</IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+  fi
+
+  if [ $sslSecured == 1 ]
+  then
+    echo -e "\n  <IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+</IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+  ServerAdmin $adminEmail
+  DocumentRoot $serverDir/www
+
+  ServerName $serverName
+  ServerAlias $serverAlias
+
+  ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
+
+    # Rewrites
+    if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
+    then
+      echo -e "\n    <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTP_HOST} !$serverName
+    RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
+  </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+    fi
+
+    if [ $chrootHost == 1 ]
+    then
+      echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
+    else
+      echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
+    fi
+
+    # Enable HSTS and ssl
+    echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+
+  SSLEngine on
+  SSLProtocol all -SSLv2 -SSLv3
+  SSLHonorCipherOrder on
+  SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+  SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+  SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+  SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+  SSLOptions +StdEnvVars +ExportCertData
+</VirtualHost>
+</IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+  else
+    if [ $chrootHost == 1 ]
+    then
+      echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
+    else
+      echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
+    fi
+      echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
+  fi
+
+  # Configuring CGI
+  echo "Creating php-fpm pool for '$serverName'..."
+  echo "[$serverName]
+; Define socket
+listen = /run/php/php-fpm.$serverName.sock
+
+; Define env var for this instance
+env[DOCUMENT_ROOT] = $serverDir/www/" > "$serverDir/conf.d/pool.cfg"
+
+  if [ $chrootHost == 1 ]
+  then
+    echo -e "\n; Chrooting dir
+chroot = $serverDir/
+
+; Default pool settings
+chdir = /www/" >> "$serverDir/conf.d/pool.cfg"
+  else
+    echo -e "\n; Default pool settings
+chdir = /" >> "$serverDir/conf.d/pool.cfg"
+  fi
+
+  echo "user = $userName
+group = www-data
+listen.owner = $userName
+listen.group = www-data
+listen.mode = 0666
+
+pm = ondemand
+pm.max_children = 4
+pm.process_idle_timeout = 8s
+pm.max_requests = 256
+
+; Redirect worker stdout and stderr into main error log. If not set, stdout and
+; stderr will be redirected to /dev/null according to FastCGI specs.
+catch_workers_output = yes
+
+; Pool collapsing fix
+php_admin_value[opcache.enable] = 0
+
+; Log file
+php_admin_flag[log_errors] = on" >> "$serverDir/conf.d/pool.cfg"
+  if [ $chrootHost == 1 ]
+  then
+    echo "php_admin_value[error_log] = /log/phperror.log
+
+; Restrict access
+php_admin_value[open_basedir]=/www/" >> "$serverDir/conf.d/pool.cfg"
+  else
+    echo "php_admin_value[error_log] = $serverDir/log/phperror.log
+
+; Restrict access
+php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/conf.d/pool.cfg"
+  fi
+}
+
+function _fixPerm() {
+  # Fixing permissions
+  echo -ne "\nFixing permissions for better security.. "
+  chmod 750 "$serverDir" -R
+  chown "$userName:www-data" "$serverDir" -R
+
+  chmod 005 -R "$serverDir"/conf.d
   echo "Done."
 }
 
@@ -625,6 +633,7 @@ do
       ftpUser=$(echo "$serverName" | tr . -)
       ftpPassword=$(openssl rand -base64 12)
 
+      # Creating host
       _createHost
 
       exit 0
@@ -666,6 +675,7 @@ do
       serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
       ftpUser=$(echo "$serverName" | tr . -)
 
+      # Removing host
       _removeHost
 
       exit 0
