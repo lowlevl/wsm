@@ -7,6 +7,7 @@ adminEmail=$(cat conf.d/adminEmail)
 
 userBasePath=$(cat conf.d/userBasePath)
 userNameSuffix=$(cat conf.d/userNameSuffix)
+userDirSuffix=$(cat conf.d/userDirSuffix)
 
 # Vars
 sslSecured=0
@@ -189,6 +190,13 @@ function _createHost()
   then
     if [ ! -f "$userDir/.www" ]
     then
+      # Check if user already exists
+      if getent passwd $userName > /dev/null
+      then
+        echo "Error: The user is already existing and is not a www user."
+        exit 1
+      fi
+
       # Check for userBasePath dir
       if [ ! -d "$userBasePath" ]
       then
@@ -200,6 +208,9 @@ function _createHost()
       # Add an user
       echo "Creating new user '$userName' with group 'www-data'..."
       useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
+
+      # Cleaning user dir
+      rm -f "$userDir"/*
 
       # Adding a lock file in user dir to protect other users from removing
       echo "Locking dir for '$userName'..."
@@ -580,7 +591,7 @@ do
             shift
             if [ ! -z "$1" ]
             then
-              userName=${1}${userNameSuffix}
+              userName=$1
             else
               echo "Error: Please specify an username after -u|--user argument."
               exit 1
@@ -619,16 +630,9 @@ do
         exit 1
       fi
 
-      # Check if username is taken by an user who is not a www user.
-      getent passwd "$userName" > /dev/null 2>&1 && userExists=1
-      if [ "$userExists" == 1 ] && [ ! -f "$userBasePath/$userName/.www" ]
-      then
-        echo "Error: The username '$userName' exists and is not a www user."
-        exit 1
-      fi
-
       # Creating vars
-      userDir=$userBasePath/$userName
+      userDir=$userBasePath/${userName}${userDirSuffix}
+      userName=${userName}${userNameSuffix}
       serverDir=$userDir/$serverName
       ftpUser=$(echo "$serverName" | tr . -)
       ftpPassword=$(openssl rand -base64 12)
