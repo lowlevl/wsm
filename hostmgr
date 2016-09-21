@@ -22,7 +22,7 @@ fi
 
 function _help()
 {
-  echo -e "Usage: $0 {add|remove|suspend|resume|update} [-h|--help]\n"
+  echo -e "Usage: $0 {add|remove|suspend|resume|userban|update} [-h|--help]\n"
   echo "Virtual server creation:"
   echo "  add:            Add a virtual server, and create an user"
   echo -e "\nVirtual server alteration/modification:"
@@ -30,6 +30,7 @@ function _help()
   echo "  suspend:        Suspend an existing virtual server."
   echo "  resume:         Resume an existing virtual server."
   echo -e "\nSpecial:"
+  echo "  userban:       Remove user and delete all his hosts."
   echo "  update:         Check for update in github repo."
   exit 1
 }
@@ -62,6 +63,12 @@ function _helpSuspend()
 function _helpResume()
 {
   echo -e "Usage: $0 resume -s|--server <name>\n"
+  exit 1
+}
+
+function _helpUserban()
+{
+  echo -e "Usage: $0 kickuser -u|--user <name>\n"
   exit 1
 }
 
@@ -188,36 +195,18 @@ function _createHost()
   # If server is not configured, launch creation
   if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]
   then
-    if [ ! -f "$userDir/.www" ]
+
+    # Check for userBasePath dir
+    if [ ! -d "$userBasePath" ]
     then
-      # Check if user already exists
-      if getent passwd $userName > /dev/null
-      then
-        echo "Error: The user is already existing and is not a www user."
-        exit 1
-      fi
+      echo "Info: The dir '$userBasePath' was not created, creating."
+      mkdir -p "$userBasePath"
+      chmod 555 "$userBasePath"
+    fi
 
-      # Check for userBasePath dir
-      if [ ! -d "$userBasePath" ]
-      then
-        echo "Info: The dir '$userBasePath' was not created, creating."
-        mkdir -p "$userBasePath"
-        chmod 555 "$userBasePath"
-      fi
-
-      # Add an user
-      echo "Creating new user '$userName' with group 'www-data'..."
-      useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
-
-      # Cleaning user dir
-      rm -f "$userDir"/*
-
-      # Adding a lock file in user dir to protect other users from removing
-      echo "Locking dir for '$userName'..."
-      touch "$userDir"/.www
-
-      echo "Disabling access to '$userDir/.www' to user '$userName'"
-      chmod 066 "$userDir"/.www
+    if [ ! -d "$userDir/web.conf" ]
+    then
+      _addUser
     fi
 
     # Making dirs
@@ -233,7 +222,7 @@ function _createHost()
 
     # Setting up default vhost
     echo "   + Copying default website to www/ dir"
-    cp -R web.d/* "$serverDir/www/"
+    cp -R web.default/* "$serverDir/www/"
 
     # Pregenerating certificate if needed
     if [ $sslSecured == 1 ]
@@ -273,11 +262,13 @@ function _createHost()
       touch "$serverDir"/conf.d/redir
     fi
 
-    # Ftp user
-    _addUser
-
     # Fix permissions
-    _fixPerm
+    echo -ne "\nFixing permissions for better security.. "
+    chmod 750 "$serverDir" -R
+    chown "$userName:www-data" "$serverDir" -R
+
+    chmod 004 -R "$serverDir"/conf.d
+    echo "Done."
 
     # Reloading php-fpm
     echo -ne "\nReloading php-fpm.. "
@@ -304,9 +295,6 @@ function _removeHost()
     then
       _removeSSL
     fi
-
-    # Remove ftp user
-    _removeUser
 
     echo -e "\nRemoving files..."
     # Removing files
@@ -379,19 +367,62 @@ function _removeSSL()
 }
 
 function _addUser() {
-  echo -ne "\nCreating ftp user.. "
-  ( echo "$ftpPassword" ; echo "$ftpPassword" ) | pure-pw useradd "$ftpUser" -u "$userName" -g www-data -d "$serverDir/www/" -m > /dev/null
+  ftpPassword=$(openssl rand -base64 12)
+
+  # Add an user
+  echo -n "Creating new Unix user.. "
+  useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
+  echo "Done."
+
+  # Cleaning user dir
+  rm -f "$userDir"/.??* > /dev/null
+
+  # Create a subdir to know that is a web user
+  mkdir "$userDir"/web.conf
+
+  # Add ftp user
+  echo -ne "Creating ftp user.. "
+  ( echo "$ftpPassword" ; echo "$ftpPassword" ) | pure-pw useradd "$userName" -u "$userName" -g www-data -d "$userDir" > /dev/null
   pure-pw mkdb
   service pure-ftpd restart
   echo "Done."
 
   # Creating passwd file to keep password
-  echo -e "{\n    \"username\": \"$ftpUser\",\n    \"password\": \"$ftpPassword\"\n}" > "$serverDir/conf.d/passwd"
+  echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$ftpPassword\"\n}" > "$userDir/web.conf/passwd"
+
+  # Copy readme file to the user root
+  cp readme.default "$userDir"/readme
+
+  # Fixing permissions
+  chmod 550 -R "$userDir"
+  chmod 004 "$userDir"/web.conf
 }
 
 function _removeUser() {
-  echo -ne "\nRemoving ftp user.. "
-  pure-pw userdel "$ftpUser" -m
+  # Recursive server remove
+  echo "Recursively removing hosts from user dir.."
+  serverList=($(ls "$userDir" -I "readme" -I "web.conf"))
+
+  for dir in ${serverList[@]}
+  do
+    if [ -f "$userDir/$dir/conf.d/pool.cfg" ]
+    then
+      echo -n "  * $dir found, removing host.. "
+      $0 remove -s $serverName > /dev/null
+      echo "Done."
+    else
+      echo "  * /conf.d/pool.cfg not found in dir '$dir'"
+    fi
+  done
+
+  # Removing Unix user
+  echo -ne "\nRemoving Unix user.. "
+  userdel -rf "$userName"
+  echo "Done."
+
+  # Removing ftp user
+  echo -n "Removing ftp user.. "
+  pure-pw userdel "$userName"
   pure-pw mkdb
   service pure-ftpd restart
   echo "Done."
@@ -537,16 +568,6 @@ php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/conf.d/pool.cfg"
   fi
 }
 
-function _fixPerm() {
-  # Fixing permissions
-  echo -ne "\nFixing permissions for better security.. "
-  chmod 750 "$serverDir" -R
-  chown "$userName:www-data" "$serverDir" -R
-
-  chmod 005 -R "$serverDir"/conf.d
-  echo "Done."
-}
-
 # Check if dependencies are installed
 if [ ! -f .allChecked ]
 then
@@ -634,8 +655,6 @@ do
       userDir=$userBasePath/${userName}${userDirSuffix}
       userName=${userName}${userNameSuffix}
       serverDir=$userDir/$serverName
-      ftpUser=$(echo "$serverName" | tr . -)
-      ftpPassword=$(openssl rand -base64 12)
 
       # Creating host
       _createHost
@@ -677,7 +696,6 @@ do
 
       # Creating vars
       serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
-      ftpUser=$(echo "$serverName" | tr . -)
 
       # Removing host
       _removeHost
@@ -781,6 +799,49 @@ do
       echo -n "Reloading apache2.. "
       service apache2 restart
       echo "Ok."
+
+      exit 0
+    ;;
+    userban)
+      while [ ! -z "$1" ]
+      do
+        shift
+        case $1 in
+          -h | --help)
+            _helpUserban
+          ;;
+          -u | --user)
+            shift
+            if [ ! -z "$1" ]
+            then
+              userName=$1
+            else
+              echo "Error: Please specify an username after -u|--user argument."
+              exit 1
+            fi
+          ;;
+        esac
+      done
+
+      # Check if there is an user name
+      if [ -z "$userName" ]
+      then
+        echo "Error: No user name specified. Try '$0 userban --help'"
+        exit 1
+      fi
+
+      # Creating vars
+      userDir=$userBasePath/${userName}${userDirSuffix}
+      userName=${userName}${userNameSuffix}
+
+      if [ ! -d "$userDir/web.conf" ]
+      then
+        echo "Error: User not found or not www user !"
+        exit 1
+      fi
+
+      # Remove user and host recursively
+      _removeUser
 
       exit 0
     ;;

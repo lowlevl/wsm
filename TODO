@@ -1,8 +1,5 @@
 I need to do few stuff to improve this project, here is the list:
 
   * regen command, command that can regenerate the config of the already created vhosts,
-      offering the ability to update configuation on the go, without recreating all 
+      offering the ability to update configuation on the go, without recreating all
       virtual host and to change virtual host configuration(ssl certificate, chroot status), when regenerating.
-      
-  * userban comand, command that just remove all virtual hosts from a specified user, before
-      deleting the complete unix user.
