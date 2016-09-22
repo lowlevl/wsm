@@ -175,16 +175,6 @@ function _checkAll()
     echo "Ok"
   fi
 
-  # git install status
-  echo -ne "\n  * git install status.. "
-  if ! dpkg -l | grep '^ii  git ' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
   touch .allChecked
 
   echo -e "\nEverything OK."
@@ -237,14 +227,17 @@ function _createHost()
     if [ $chrootHost == 1 ]
     then
       echo "Copying files to setup chroot.."
+      mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev,lib/x86_64-linux-gnu}
       echo -n " * Local time.. "
-      mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev}
       cp /etc/localtime "$serverDir/etc"
       cp -r /usr/share/zoneinfo "$serverDir/usr/share"
       echo "Ok"
 
       echo -n " * System files.. "
       cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
+      cp hosts.default "$serverDir"/etc/hosts
+
+      cp /lib/x86_64-linux-gnu/libnss_dns*.so /lib/x86_64-linux-gnu/libnss_dns.so.2 "$serverDir"/lib/x86_64-linux-gnu/
       echo "Ok"
     fi
 
@@ -408,7 +401,7 @@ function _removeUser() {
     if [ -f "$userDir/$dir/conf.d/pool.cfg" ]
     then
       echo -n "  * $dir found, removing host.. "
-      $0 remove -s $serverName > /dev/null
+      $0 remove -s $dir > /dev/null
       echo "Done."
     else
       echo "  * /conf.d/pool.cfg not found in dir '$dir'"
@@ -559,12 +552,12 @@ php_admin_flag[log_errors] = on" >> "$serverDir/conf.d/pool.cfg"
     echo "php_admin_value[error_log] = /log/phperror.log
 
 ; Restrict access
-php_admin_value[open_basedir]=/www/" >> "$serverDir/conf.d/pool.cfg"
+php_admin_value[open_basedir]=/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
   else
     echo "php_admin_value[error_log] = $serverDir/log/phperror.log
 
 ; Restrict access
-php_admin_value[open_basedir]=$serverDir/www/" >> "$serverDir/conf.d/pool.cfg"
+php_admin_value[open_basedir]=$serverDir/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
   fi
 }
 
