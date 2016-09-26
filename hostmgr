@@ -9,6 +9,27 @@ userBasePath=$(cat conf.d/userBasePath)
 userNameSuffix=$(cat conf.d/userNameSuffix)
 userDirSuffix=$(cat conf.d/userDirSuffix)
 
+# Parse config
+configFile="config.cfg"
+while IFS='= ' read varName content
+do
+  if [[ ! $varName =~ ^\ *# && -n $varName ]]
+  then
+    content=$(sed 's/\s*$//g' <<< $content)  # Del trailing spaces
+    content=$(sed 's/\s*#/#/g' <<< $content) # Del trailing spaces before '#'
+    content=$(sed 's/#.*//' <<< $content)    # Del all after '#'
+    content="${content%\"*}"                 # Del closing string quotes
+    content="${content#\"*}"                 # Del opening string quotes
+
+    declare $varName="$content"
+  fi
+done < $configFile
+
+#echo "Content of var1 is $var1"
+#echo "Content of var2 is $var2"
+#echo "Content of var3 is [$var3]"
+#echo "Content of var4 + var5 is: [$var4$var5]"
+
 # Vars
 sslSecured=0
 chrootHost=1
@@ -387,6 +408,7 @@ function _addUser() {
   cp readme.default "$userDir"/readme
 
   # Fixing permissions
+  chown "$userName":www-data  "$userDir"
   chmod 550 -R "$userDir"
   chmod 004 "$userDir"/web.conf
 }
