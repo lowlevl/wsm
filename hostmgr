@@ -1,15 +1,6 @@
 #!/bin/bash
 
-# Config from conf.d/ dir
-letsEncryptExec=$(cat conf.d/letsEncryptExec)
-letsEncryptDir=$(cat conf.d/letsEncryptDir)
-adminEmail=$(cat conf.d/adminEmail)
-
-userBasePath=$(cat conf.d/userBasePath)
-userNameSuffix=$(cat conf.d/userNameSuffix)
-userDirSuffix=$(cat conf.d/userDirSuffix)
-
-# Parse config
+# Parse config from config.cfg file
 configFile="config.cfg"
 while IFS='= ' read varName content
 do
@@ -24,11 +15,6 @@ do
     declare $varName="$content"
   fi
 done < $configFile
-
-#echo "Content of var1 is $var1"
-#echo "Content of var2 is $var2"
-#echo "Content of var3 is [$var3]"
-#echo "Content of var4 + var5 is: [$var4$var5]"
 
 # Vars
 sslSecured=0
