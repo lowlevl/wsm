@@ -408,7 +408,7 @@ function _addUser() {
   cp readme.default "$userDir"/readme
 
   # Fixing permissions
-  chown "$userName":www-data  "$userDir"
+  chown -R "$userName":www-data "$userDir"
   chmod 550 -R "$userDir"
   chmod 004 "$userDir"/web.conf
 }
