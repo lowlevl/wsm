@@ -254,11 +254,14 @@ function _createHost()
       cp -r /usr/share/zoneinfo "$serverDir/usr/share"
       echo "Ok"
 
-      echo -n " * System files.. "
+      echo " * System files.."
+      echo -n "   -> /dev/ stuff.. "
       cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
       cp hosts.default "$serverDir"/etc/hosts
-
-      cp /lib/x86_64-linux-gnu/libnss_dns*.so /lib/x86_64-linux-gnu/libnss_dns.so.2 "$serverDir"/lib/x86_64-linux-gnu/
+      echo "Ok"
+      
+      echo -n "   -> copying libs.. "
+      cp -r /lib/x86_64-linux-gnu/* "$serverDir"/lib/x86_64-linux-gnu
       echo "Ok"
     fi
 
@@ -278,10 +281,10 @@ function _createHost()
 
     # Fix permissions
     echo -ne "\nFixing permissions for better security.. "
-    chmod 750 "$serverDir" -R
+    chmod 750 "$serverDir" -R -f
     chown "$userName:www-data" "$serverDir" -R
 
-    chmod 004 -R "$serverDir"/conf.d
+    chmod 004 "$serverDir"/conf.d -R
     echo "Done."
 
     # Reloading php-fpm
@@ -386,6 +389,7 @@ function _addUser() {
   # Add an user
   echo -n "Creating new Unix user.. "
   useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
+  passwd --lock "$userName" > /dev/null
   echo "Done."
 
   # Cleaning user dir
@@ -432,7 +436,7 @@ function _removeUser() {
 
   # Removing Unix user
   echo -ne "\nRemoving Unix user.. "
-  userdel -rf "$userName"
+  userdel -rf "$userName" > /dev/null
   echo "Done."
 
   # Removing ftp user
