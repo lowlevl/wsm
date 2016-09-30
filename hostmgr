@@ -29,7 +29,7 @@ fi
 
 function _help()
 {
-  echo -e "Usage: $0 {add|remove|suspend|resume|userban|update} [-h|--help]\n"
+  echo -e "Usage: $0 {add|remove|suspend|resume|userban} [-h|--help]\n"
   echo "Virtual server creation:"
   echo "  add:            Add a virtual server, and create an user"
   echo -e "\nVirtual server alteration/modification:"
@@ -38,7 +38,6 @@ function _help()
   echo "  resume:         Resume an existing virtual server."
   echo -e "\nSpecial:"
   echo "  userban:       Remove user and delete all his hosts."
-  echo "  update:         Check for update in github repo."
   exit 1
 }
 
@@ -245,7 +244,7 @@ function _createHost()
       cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
       cp hosts.default "$serverDir"/etc/hosts
       echo "Ok"
-      
+
       echo -n "   -> copying libs.. "
       cp -r /lib/x86_64-linux-gnu/* "$serverDir"/lib/x86_64-linux-gnu
       echo "Ok"
@@ -548,13 +547,13 @@ listen.mode = 0666
 pm = ondemand
 pm.max_children = 4
 pm.process_idle_timeout = 8s
-pm.max_requests = 256
+pm.max_requests = 64
 
 ; Redirect worker stdout and stderr into main error log. If not set, stdout and
 ; stderr will be redirected to /dev/null according to FastCGI specs.
 catch_workers_output = yes
 
-; Pool collapsing fix
+; Pool mix fix
 php_admin_value[opcache.enable] = 0
 
 ; Log file
@@ -847,28 +846,6 @@ do
 
       # Remove user and host recursively
       _removeUser
-
-      exit 0
-    ;;
-    update)
-      # Check for update on repo
-      echo -n "Checking for updates.. "
-      currentVersion=$(git rev-parse HEAD)
-      remoteVersion=$(git ls-remote origin | grep -o '^\S*' | head -n 1)
-
-      if [ "$currentVersion" == "$remoteVersion" ]
-      then
-        echo "Up to date."
-      else
-        echo "Update found !"
-        echo -n "  * Fetching from repo.. "
-        git fetch --all > /dev/null
-        echo "Done."
-
-        echo -n "  * Applying update.. "
-        git reset --hard origin/master > /dev/null
-        echo "Done."
-      fi
 
       exit 0
     ;;
