@@ -294,7 +294,7 @@ function _removeHost()
     $0 suspend -s "$serverName"
 
     # Revoking and removing ssl cert
-    if [ -f "$serverDir/conf.d/.ssl" ]
+    if [ -f "$serverDir/conf.d/ssl" ]
     then
       _removeSSL
     fi
