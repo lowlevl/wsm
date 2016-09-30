@@ -135,7 +135,7 @@ function _checkAll()
 
   # PHP
   echo -ne "\n  * PHP install status.. "
-  if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5.6 ' -e '^ii  php5 ' -e '^ii  php ' > /dev/null
+  if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5.6 ' > /dev/null
   then
     echo "Failed"
     exit 1
