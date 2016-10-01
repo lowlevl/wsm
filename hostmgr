@@ -436,55 +436,55 @@ function _generateConf() {
   # Creating apache config file
   echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
   echo "<Directory $serverDir/www>
-Options -Indexes +FollowSymLinks
-AllowOverride AuthConfig Indexes
-Require all granted
+  Options -Indexes +FollowSymLinks
+  AllowOverride AuthConfig Indexes
+  Require all granted
 </Directory>
 <VirtualHost *:80>
-ServerAdmin $adminEmail
-DocumentRoot $serverDir/www
-
-ServerName $serverName
-ServerAlias $serverAlias
-
-ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
-
-  # Rewrites
-  if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
-  then
-    echo -e "\n  <IfModule mod_rewrite.c>
-RewriteEngine on
-RewriteCond %{HTTP_HOST} !^$serverName$
-RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
-</IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-  fi
-
-  if [ $sslSecured == 1 ]
-  then
-    echo -e "\n  <IfModule mod_rewrite.c>
-RewriteEngine on
-RewriteCond %{HTTPS} off
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-</IfModule>
-</VirtualHost>
-<IfModule mod_ssl.c>
-<VirtualHost *:443>
   ServerAdmin $adminEmail
   DocumentRoot $serverDir/www
 
   ServerName $serverName
   ServerAlias $serverAlias
 
-  ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
+  ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
+
+  # Rewrites
+  if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
+  then
+    echo -e "\n  <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTP_HOST} !^$serverName$
+    RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
+  </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+  fi
+
+  if [ $sslSecured == 1 ]
+  then
+    echo -e "\n  <IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteCond %{HTTPS} off
+    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+  </IfModule>
+</VirtualHost>
+<IfModule mod_ssl.c>
+  <VirtualHost *:443>
+    ServerAdmin $adminEmail
+    DocumentRoot $serverDir/www
+
+    ServerName $serverName
+    ServerAlias $serverAlias
+
+    ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
 
     # Rewrites
     if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
     then
       echo -e "\n    <IfModule mod_rewrite.c>
-    RewriteEngine on
-    RewriteCond %{HTTP_HOST} !$serverName
-    RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
-  </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+      RewriteEngine on
+      RewriteCond %{HTTP_HOST} !$serverName
+      RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
+    </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
     fi
 
     if [ $chrootHost == 1 ]
@@ -497,15 +497,15 @@ RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
     # Enable HSTS and ssl
     echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
-  SSLEngine on
-  SSLProtocol all -SSLv2 -SSLv3
-  SSLHonorCipherOrder on
-  SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-  SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-  SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-  SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-  SSLOptions +StdEnvVars +ExportCertData
-</VirtualHost>
+    SSLEngine on
+    SSLProtocol all -SSLv2 -SSLv3
+    SSLHonorCipherOrder on
+    SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
+    SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
+    SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
+    SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
+    SSLOptions +StdEnvVars +ExportCertData
+  </VirtualHost>
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
   else
     if [ $chrootHost == 1 ]
