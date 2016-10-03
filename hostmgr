@@ -251,8 +251,8 @@ function _createHost()
       cp /etc/services "$serverDir"/etc/
       echo "Ok"
 
-      echo -n "   -> copying libs for 'php'.. "
-      fileArray=$(ldd /usr/bin/php7.0 /usr/bin/php5.6 2>/dev/null | awk 'NF == 4 {print $3}; NF == 2 {print $1}' | sort -u)
+      echo -n "   -> copying libs for 'php' and php-fpm.. "
+      fileArray=$(ldd /usr/bin/php7.0 /usr/bin/php5.6 /usr/sbin/php-fpm7.0 /usr/sbin/php-fpm5.6 2>/dev/null | awk 'NF == 4 {print $3}; NF == 2 {print $1}' | sort -u)
 
       for file in $fileArray
       do
