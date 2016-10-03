@@ -242,11 +242,24 @@ function _createHost()
       echo " * System files.."
       echo -n "   -> /dev/ stuff.. "
       cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
-      cp hosts.default "$serverDir"/etc/hosts
       echo "Ok"
 
-      echo -n "   -> copying libs.. "
-      cp -r /lib/x86_64-linux-gnu/* "$serverDir"/lib/x86_64-linux-gnu
+      echo -n "   -> /etc/ stuff.. "
+      cp hosts.default "$serverDir"/etc/hosts
+      cp /etc/nsswitch.conf "$serverDir"/etc/
+      cp /etc/resolv.conf "$serverDir"/etc/
+      cp /etc/services "$serverDir"/etc/
+      echo "Ok"
+
+      echo -n "   -> copying libs for 'php'.. "
+      fileArray=$(ldd /usr/bin/php7.0 /usr/bin/php5.6 2>/dev/null | awk 'NF == 4 {print $3}; NF == 2 {print $1}' | sort -u)
+
+      for file in $fileArray
+      do
+        dirName="$(dirname $file)"
+        [ ! -d $serverDir$dirName ] && mkdir -p $serverDir$dirName || :
+        cp $file $serverDir$dirName
+      done
       echo "Ok"
     fi
 
@@ -421,7 +434,7 @@ function _removeUser() {
 
   # Removing Unix user
   echo -ne "\nRemoving Unix user.. "
-  userdel -rf "$userName" > /dev/null
+  userdel -rf "$userName" 2>/dev/null
   echo "Done."
 
   # Removing ftp user
