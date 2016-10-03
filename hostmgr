@@ -558,7 +558,7 @@ listen.group = www-data
 listen.mode = 0666
 
 pm = ondemand
-pm.max_children = 4
+pm.max_children = 16
 pm.process_idle_timeout = 8s
 pm.max_requests = 64
 
