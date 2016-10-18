@@ -36,8 +36,9 @@ function _help()
   echo "  remove:         Remove an existing virtual server."
   echo "  suspend:        Suspend an existing virtual server."
   echo "  resume:         Resume an existing virtual server."
+  echo "  regen:          Fully regenerate virtual server config and dirs."
   echo -e "\nSpecial:"
-  echo "  userban:       Remove user and delete all his hosts."
+  echo "  userban:        Remove user and delete all his hosts."
   exit 1
 }
 
@@ -75,6 +76,12 @@ function _helpResume()
 function _helpUserban()
 {
   echo -e "Usage: $0 kickuser -u|--user <name>\n"
+  exit 1
+}
+
+function _helpRegen()
+{
+  echo -e "Usage: $0 regen -s|--server <name>\n"
   exit 1
 }
 
@@ -195,7 +202,7 @@ function _createHost()
     # Check for userBasePath dir
     if [ ! -d "$userBasePath" ]
     then
-      echo "Info: The dir '$userBasePath' was not created, creating."
+      echo "Info: The base dir was not found, creating."
       mkdir -p "$userBasePath"
       chmod 555 "$userBasePath"
     fi
@@ -293,7 +300,7 @@ function _createHost()
     # Enabling site
     $0 resume -s "$serverName"
   else
-    echo "Error: Server already configured..."
+    echo "Error: Server already found."
     exit 1
   fi
 }
@@ -585,6 +592,16 @@ php_admin_value[open_basedir]=$serverDir/www:/tmp" >> "$serverDir/conf.d/pool.cf
   fi
 }
 
+function _regenHost() {
+  if [ -f "/etc/apache2/sites-available/$serverName.conf" ]
+  then
+    echo ""
+  else
+    echo -e "Error: Server not found."
+    exit 1
+  fi
+}
+
 # Check if dependencies are installed
 if [ ! -f .allChecked ]
 then
@@ -859,6 +876,46 @@ do
 
       # Remove user and host recursively
       _removeUser
+
+      exit 0
+    ;;
+    regen)
+      while [ ! -z "$1" ]
+      do
+        shift
+        case $1 in
+          -h | --help)
+            _helpResume
+          ;;
+          -s | --server)
+            shift
+            if [ ! -z "$1" ]
+            then
+              if [ -z "$serverName" ]
+              then
+                serverName=$1
+              else
+                echo "Error: You can only specify one server name to resume."
+                exit 1
+              fi
+            else
+              echo "Error: Please specify a server name after -s|--server argument."
+              exit 1
+            fi
+        esac
+      done
+
+      # Check if there is a server name
+      if [ -z "$serverName" ]
+      then
+        echo "Error: No server name specified. Try '$0 regen --help'"
+        exit 1
+      fi
+
+      serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
+
+      # Launch regeneration
+      _regenHost
 
       exit 0
     ;;
