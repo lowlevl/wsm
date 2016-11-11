@@ -456,8 +456,8 @@ function _generateConf() {
   # Creating apache config file
   echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
   echo "<Directory $serverDir/www>
-  Options -Indexes +FollowSymLinks
-  AllowOverride AuthConfig Indexes
+  Options -Indexes +FollowSymLinks +MultiViews
+  AllowOverride All
   Require all granted
 </Directory>
 <VirtualHost *:80>
@@ -507,12 +507,9 @@ function _generateConf() {
     </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
     fi
 
-    if [ $chrootHost == 1 ]
-    then
-      echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-    else
-      echo -e "\n    ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
+    echo -e "\n    <FilesMatch \\.php\$>
+      SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
+    </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
 
     # Enable HSTS and ssl
     echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
@@ -528,13 +525,17 @@ function _generateConf() {
   </VirtualHost>
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
   else
-    if [ $chrootHost == 1 ]
-    then
-      echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-    else
-      echo -e "\n  ProxyPassMatch \"^/(.*\.php(/.*)?)$\" \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost$serverDir/www\"" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
+      echo -e "\n  <FilesMatch \\.php\$>
+    SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
+  </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
       echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
+  fi
+
+  # If chroot symlink to make chroot work
+  if [ $chrootHost == 1 ]
+  then
+    mkdir -p $serverDir$serverDir
+    ln -s ../../../../www/ $serverDir$serverDir/www
   fi
 
   # Configuring CGI
