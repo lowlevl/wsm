@@ -507,12 +507,12 @@ function _generateConf() {
     </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
     fi
 
-    echo -e "\n    <FilesMatch \\.php\$>
+    echo -e "\n    ProxyErrorOverride on
+    <FilesMatch \\.php\$>
       SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
-    </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
+    </FilesMatch>
 
-    # Enable HSTS and ssl
-    echo -e "\n    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
+    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
 
     SSLEngine on
     SSLProtocol all -SSLv2 -SSLv3
@@ -525,7 +525,8 @@ function _generateConf() {
   </VirtualHost>
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
   else
-      echo -e "\n  <FilesMatch \\.php\$>
+      echo -e "\n  ProxyErrorOverride on
+  <FilesMatch \\.php\$>
     SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
   </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
       echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
