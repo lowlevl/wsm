@@ -9,7 +9,7 @@
   <body>
     <div align="center">
         <h1>This is the default page of this webserver,</h1><br>
-        For further information please check <a href="https://github.com/Thecakeisgit/hostmgr">the project page :D <i class="glyphicon glyphicon-heart"></i></a>
+        For further information please check <a href="https://github.com/Thecakeisgit/wSm">the project page :D <i class="glyphicon glyphicon-heart"></i></a>
         <br>Nota bene: If you are a customer, please contact your webadmin to fix this ugly default page ;D
       </div>
   </body>

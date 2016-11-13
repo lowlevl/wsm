@@ -1,5 +1,5 @@
-# hostmgr
-Simple script to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt.
+# wSm (for web Server manager)
+Simple cli utility to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt.
 
 # Features:
   - Create/Remove virtual hosts very quickly (~3s without ssl).
