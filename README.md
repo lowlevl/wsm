@@ -10,13 +10,14 @@ Simple cli utility to create apache virtual servers, with jail and ability to au
   - Default webserver/hosts file/readme personalisation.
 
 # Dependencies:
-  - Apache 2
+  - apache2
   - php >= 5.6
   - php-fpm >= 5.6
-  - Pure-ftpd
+  - pure-ftpd
 
 Apache Mods:
   - rewrite
   - proxy
   - proxy_fcgi
   - headers
+  - ssl
