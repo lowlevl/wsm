@@ -140,6 +140,26 @@ function _checkAll()
     echo "Ok"
   fi
 
+  # Mod ssl
+  echo -n "    [mod] ssl_module enable status.. "
+  if ! apache2ctl -M | grep -e 'ssl_module' > /dev/null
+  then
+    echo "Failed"
+    exit 1
+  else
+    echo "Ok"
+  fi
+
+  # pure-ftpd
+  echo -ne "\n  * pure-ftpd install status.. "
+  if ! dpkg -l | grep -e '^ii  pure-ftpd ' > /dev/null
+  then
+    echo "Failed"
+    exit 1
+  else
+    echo "Ok"
+  fi
+
   # PHP
   echo -ne "\n  * PHP install status.. "
   if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5.6 ' > /dev/null
