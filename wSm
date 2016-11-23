@@ -508,8 +508,8 @@ function _generateConf() {
     fi
 
     echo -e "\n    ProxyErrorOverride on
-    <FilesMatch \\.php\$>
-      SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
+    <FilesMatch \"\\.php\$\">
+      SetHandler \"proxy:unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
     </FilesMatch>
 
     Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
@@ -526,8 +526,8 @@ function _generateConf() {
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
   else
       echo -e "\n  ProxyErrorOverride on
-  <FilesMatch \\.php\$>
-    SetHandler \"unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
+  <FilesMatch \"\\.php\$\">
+    SetHandler \"proxy:unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
   </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
       echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
   fi
