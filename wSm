@@ -489,16 +489,6 @@ function _generateConf() {
 
   ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
 
-  # Rewrites
-  if [ $hostRedir == 1 ] && [ $sslSecured != 1 ]
-  then
-    echo -e "\n  <IfModule mod_rewrite.c>
-    RewriteEngine on
-    RewriteCond %{HTTP_HOST} !^$serverName$
-    RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
-  </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-  fi
-
   if [ $sslSecured == 1 ]
   then
     echo -e "\n  <IfModule mod_rewrite.c>
@@ -518,7 +508,7 @@ function _generateConf() {
     ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
 
     # Rewrites
-    if [ $hostRedir == 1 ] || [ $sslSecured != 1 ]
+    if [ $hostRedir == 1 ]
     then
       echo -e "\n    <IfModule mod_rewrite.c>
       RewriteEngine on
@@ -545,11 +535,21 @@ function _generateConf() {
   </VirtualHost>
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
   else
-      echo -e "\n  ProxyErrorOverride on
+    # Rewrites
+    if [ $hostRedir == 1 ]
+    then
+      echo -e "\n  <IfModule mod_rewrite.c>
+      RewriteEngine on
+      RewriteCond %{HTTP_HOST} !^$serverName$
+      RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
+    </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
+    fi
+
+    echo -e "\n  ProxyErrorOverride on
   <FilesMatch \"\\.php\$\">
     SetHandler \"proxy:unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
   </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
-      echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
+    echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
   fi
 
   # If chroot symlink to make chroot work
