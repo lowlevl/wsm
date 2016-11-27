@@ -1,31 +1,16 @@
 #!/bin/bash
 
-# Parse config from config.cfg file
-configFile="config.cfg"
-while IFS='= ' read varName content
-do
-  if [[ ! $varName =~ ^\ *# && -n $varName ]]
-  then
-    content=$(sed 's/\s*$//g' <<< $content)  # Del trailing spaces
-    content=$(sed 's/\s*#/#/g' <<< $content) # Del trailing spaces before '#'
-    content=$(sed 's/#.*//' <<< $content)    # Del all after '#'
-    content="${content%\"*}"                 # Del closing string quotes
-    content="${content#\"*}"                 # Del opening string quotes
-
-    declare $varName="$content"
-  fi
-done < $configFile
-
-# Vars
-sslSecured=0
-chrootHost=1
-hostRedir=0
-
 # Standard user fail protection
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
   exit 1
 fi
+
+# Load config
+source modules/configReader.sh "config.cfg"
+
+# Run sanityCheck
+bash modules/sanityCheck.sh || exit 1
 
 function _help()
 {
@@ -83,246 +68,6 @@ function _helpRegen()
 {
   echo -e "Usage: $0 regen -s|--server <name>\n"
   exit 1
-}
-
-function _checkAll()
-{
-  # Check for installed dependencies
-  echo "Verifying system to find if the script can be executed.."
-
-  # Apache
-  echo -n "  * Apache2 install status.. "
-  if ! dpkg -l | grep '^ii  apache2 ' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # Mod rewrite
-  echo -n "    [mod] rewrite_module enable status.. "
-  if ! apache2ctl -M | grep -e 'rewrite_module' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # Mod proxy
-  echo -n "    [mod] proxy_module enable status.. "
-  if ! apache2ctl -M | grep -e 'proxy_module' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # Mod proxy_fcgi
-  echo -n "    [mod] proxy_fcgi enable status.. "
-  if ! apache2ctl -M | grep -e 'proxy_fcgi' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # Mod headers
-  echo -n "    [mod] headers_module enable status.. "
-  if ! apache2ctl -M | grep -e 'headers_module' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # Mod ssl
-  echo -n "    [mod] ssl_module enable status.. "
-  if ! apache2ctl -M | grep -e 'ssl_module' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # pure-ftpd
-  echo -ne "\n  * pure-ftpd install status.. "
-  if ! dpkg -l | grep -e '^ii  pure-ftpd ' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # PHP
-  echo -ne "\n  * PHP install status.. "
-  if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5.6 ' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # php-fpm
-  echo -n "    [cgi] php*-fpm install status.. "
-  if ! dpkg -l | grep '^ii  php.*-fpm ' > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-    echo -n "       -> php*-fpm conf.. "
-    if ! grep -qF "include=$userBasePath/*/*/conf.d/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-    then
-      echo "Warning, auto-configured."
-      sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/conf.d/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-    else
-      echo "Ok"
-    fi
-  fi
-
-  # letsencrypt binary
-  echo -ne "\n  * letsencrypt binary presence.. "
-  if ! which "$letsEncryptExec" > /dev/null
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  # letsencrypt dir
-  echo -ne "       -> letsencrypt directory presence.. "
-  if [ ! -d "$letsEncryptDir" ]
-  then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
-  touch .allChecked
-
-  echo -e "\nEverything OK."
-}
-
-function _createHost()
-{
-  # If server is not configured, launch creation
-  if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]
-  then
-
-    # Check for userBasePath dir
-    if [ ! -d "$userBasePath" ]
-    then
-      echo "Info: The base dir was not found, creating."
-      mkdir -p "$userBasePath"
-      chmod 555 "$userBasePath"
-    fi
-
-    if [ ! -d "$userDir/web.conf" ]
-    then
-      _addUser
-    fi
-
-    # Making dirs
-    echo "Making dirs.."
-    echo "   + /"
-    mkdir "$serverDir"
-    echo "   + /www"
-    mkdir "$serverDir/www"
-    echo "   + /log"
-    mkdir "$serverDir/log"
-    echo "   + /conf.d"
-    mkdir "$serverDir/conf.d"
-
-    # Setting up default vhost
-    echo "   + Copying default website to www/ dir"
-    cp -R web.default/* "$serverDir/www/"
-
-    # Pregenerating certificate if needed
-    if [ $sslSecured == 1 ]
-    then
-      _addSSL
-    fi
-
-    # Generating config files
-    _generateConf
-
-    # PHP requirements in chroot
-    if [ $chrootHost == 1 ]
-    then
-      echo "Copying files to setup chroot.."
-      mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev,lib/x86_64-linux-gnu}
-      echo -n " * Local time.. "
-      cp /etc/localtime "$serverDir/etc"
-      cp -r /usr/share/zoneinfo "$serverDir/usr/share"
-      echo "Ok"
-
-      echo " * System files.."
-      echo -n "   -> /dev/ stuff.. "
-      cp -a /dev/urandom /dev/null /dev/zero "$serverDir"/dev
-      echo "Ok"
-
-      echo -n "   -> /etc/ stuff.. "
-      cp hosts.default "$serverDir"/etc/hosts
-      cp /etc/nsswitch.conf "$serverDir"/etc/
-      cp /etc/resolv.conf "$serverDir"/etc/
-      cp /etc/services "$serverDir"/etc/
-      echo "Ok"
-
-      echo -n "   -> copying libs for 'php' and php-fpm.. "
-      fileArray=$(ldd /usr/bin/php7.0 /usr/bin/php5.6 /usr/sbin/php-fpm7.0 /usr/sbin/php-fpm5.6 2>/dev/null | awk 'NF == 4 {print $3}; NF == 2 {print $1}' | sort -u)
-
-      for file in $fileArray
-      do
-        dirName="$(dirname $file)"
-        [ ! -d $serverDir$dirName ] && mkdir -p $serverDir$dirName || :
-        cp $file $serverDir$dirName
-      done
-      echo "Ok"
-    fi
-
-    # Keeping install parameters in conf.d dir
-    if [ $sslSecured == 1 ]
-    then
-      touch "$serverDir"/conf.d/ssl
-    fi
-    if [ $chrootHost == 1 ]
-    then
-      touch "$serverDir"/conf.d/chroot
-    fi
-    if [ $hostRedir == 1 ]
-    then
-      touch "$serverDir"/conf.d/redir
-    fi
-
-    # Fix permissions
-    echo -ne "\nFixing permissions for better security.. "
-    chmod 750 "$serverDir" -R -f
-    chown "$userName:www-data" "$serverDir" -R
-
-    chmod 004 "$serverDir"/conf.d -R
-    echo "Done."
-
-    # Reloading php-fpm
-    echo -ne "\nReloading php-fpm.. "
-    service php*-fpm restart
-    echo "Ok."
-
-    # Enabling site
-    $0 resume -s "$serverName"
-  else
-    echo "Error: Server already found."
-    exit 1
-  fi
 }
 
 function _removeHost()
@@ -624,14 +369,6 @@ function _regenHost() {
   fi
 }
 
-# Check if dependencies are installed
-if [ ! -f .allChecked ]
-then
-  _checkAll
-  echo "Now you can retype your command."
-  exit 0
-fi
-
 # Parsing arguments
 while [ ! -z "$1" ]
 do
@@ -687,33 +424,8 @@ do
         esac
       done
 
-      # Check if there is a server name
-      if [ -z "$serverName" ]
-      then
-        echo "Error: No server name specified. Try '$0 add --help'"
-        exit 1
-      fi
-
-      # Check if there is an user name
-      if [ -z "$userName" ]
-      then
-        echo "Error: No user name specified. Try '$0 add --help'"
-        exit 1
-      fi
-
-      if [ "$hostRedir" == 1 ] && [ -z "$serverAlias" ]
-      then
-        echo "Error: You can't request redirecting all aliases to domain, there isn't any alias."
-        exit 1
-      fi
-
-      # Creating vars
-      userDir=$userBasePath/${userName}${userDirSuffix}
-      userName=${userName}${userNameSuffix}
-      serverDir=$userDir/$serverName
-
       # Creating host
-      _createHost
+      bash modules/hosts/addHost.sh $userName $serverName $sslSecured $chrootHost $hostRedir
 
       exit 0
     ;;
