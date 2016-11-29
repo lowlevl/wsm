@@ -4,17 +4,13 @@
 source modules/configReader.sh "config.cfg"
 
 # Getting parameters
-userName="$1"
-serverName="$2"
+serverName="$1"
+serverAlias="$2"
+userName="$3"
 
-sslSecured="$3"
-chrootHost="$4"
-hostRedir="$5"
-
-# Generating vars
-userDir=$userBasePath/${userName}${userDirSuffix}
-userName=${userName}${userNameSuffix}
-serverDir=$userDir/$serverName
+sslSecured="$4"
+chrootHost="$5"
+hostRedir="$6"
 
 # Check if there is a server name
 if [ -z "$serverName" ]
@@ -36,6 +32,11 @@ then
   exit 1
 fi
 
+# Generating vars
+userDir="$userBasePath/${userName}${userDirSuffix}"
+userName="${userName}${userNameSuffix}"
+serverDir="$userDir/$serverName"
+
 # If server is not configured, launch creation
 if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]
 then
@@ -50,7 +51,7 @@ then
 
   if [ ! -d "$userDir/web.conf" ]
   then
-    _addUser
+    bash modules/users/addUser.sh "$userName" "$userDir"
   fi
 
   # Making dirs
@@ -69,22 +70,22 @@ then
   cp -R web.default/* "$serverDir/www/"
 
   # Pregenerating certificate if needed
-  if [ $sslSecured == 1 ]
+  if [ "$sslSecured" == 1 ]
   then
-    _addSSL
+    bash modules/hosts/addHTTPs.sh "$serverName" "$serverAlias" "$serverDir"
   fi
 
   # Generating config files
-  _generateConf
+  bash modules/config/genConfig.sh "$serverName" "$serverAlias" "$serverDir" "$userName" "$sslSecured" "$chrootHost" "$hostRedir"
 
   # PHP requirements in chroot
-  if [ $chrootHost == 1 ]
+  if [ "$chrootHost" == 1 ]
   then
     echo "Copying files to setup chroot.."
     mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev,lib/x86_64-linux-gnu}
     echo -n " * Local time.. "
-    cp /etc/localtime "$serverDir/etc"
-    cp -r /usr/share/zoneinfo "$serverDir/usr/share"
+    cp /etc/localtime "$serverDir"/etc
+    cp -r /usr/share/zoneinfo "$serverDir"/usr/share
     echo "Ok"
 
     echo " * System files.."
@@ -105,41 +106,46 @@ then
     for file in $fileArray
     do
       dirName="$(dirname $file)"
-      [ ! -d $serverDir$dirName ] && mkdir -p $serverDir$dirName || :
-      cp $file $serverDir$dirName
+      [ ! -d "$serverDir$dirName" ] && mkdir -p "$serverDir$dirName" || :
+      cp $file "$serverDir$dirName"
     done
     echo "Ok"
+
+    echo -n "   -> Creating symlink to make php-fpm work.. "
+    mkdir -p "$serverDir$serverDir"
+    ln -s ../../../../www/ "$serverDir$serverDir"/www
+    echo "Ok"
+
   fi
 
   # Keeping install parameters in conf.d dir
-  if [ $sslSecured == 1 ]
-  then
-    touch "$serverDir"/conf.d/ssl
-  fi
-  if [ $chrootHost == 1 ]
-  then
-    touch "$serverDir"/conf.d/chroot
-  fi
-  if [ $hostRedir == 1 ]
-  then
-    touch "$serverDir"/conf.d/redir
-  fi
+  touch "$serverDir/conf.d/install.cfg"
 
   # Fix permissions
   echo -ne "\nFixing permissions for better security.. "
-  chmod 750 "$serverDir" -R -f
+  chmod 550 "$serverDir" -R
+  chmod 000 "$serverDir/conf.d" -R
+
+  chmod 750 "$serverDir/www"
+
   chown "$userName:www-data" "$serverDir" -R
+  echo "Done"
 
-  chmod 004 "$serverDir"/conf.d -R
-  echo "Done."
-
-  # Reloading php-fpm
-  echo -ne "\nReloading php-fpm.. "
-  service php*-fpm restart
-  echo "Ok."
 
   # Enabling site
-  $0 resume -s "$serverName"
+  echo -ne "\n * Enabling site '$serverName'.. "
+  a2ensite "$serverName" > /dev/null
+  echo "Ok"
+
+  # Reloading php-fpm
+  echo -n "Reloading php-fpm.. "
+  service php*-fpm restart
+  echo "Ok"
+
+  # Reloading apache2
+  echo -n "Reloading apache2.. "
+  service apache2 reload
+  echo "Ok"
 else
   echo "Error: Server already found."
   exit 1

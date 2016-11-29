@@ -12,6 +12,11 @@ source modules/configReader.sh "config.cfg"
 # Run sanityCheck
 bash modules/sanityCheck.sh || exit 1
 
+# Default vars
+chrootHost=1
+sslSecured=0
+hostRedir=0
+
 function _help()
 {
   echo -e "Usage: $0 {add|remove|suspend|resume|userban} [-h|--help]\n"
@@ -19,8 +24,6 @@ function _help()
   echo "  add:            Add a virtual server, and create an user"
   echo -e "\nVirtual server alteration/modification:"
   echo "  remove:         Remove an existing virtual server."
-  echo "  suspend:        Suspend an existing virtual server."
-  echo "  resume:         Resume an existing virtual server."
   echo "  regen:          Fully regenerate virtual server config and dirs."
   echo -e "\nSpecial:"
   echo "  userban:        Remove user and delete all his hosts."
@@ -47,17 +50,6 @@ function _helpRemove()
   exit 1
 }
 
-function _helpSuspend()
-{
-  echo -e "Usage: $0 suspend -s|--server <name>\n"
-  exit 1
-}
-function _helpResume()
-{
-  echo -e "Usage: $0 resume -s|--server <name>\n"
-  exit 1
-}
-
 function _helpUserban()
 {
   echo -e "Usage: $0 kickuser -u|--user <name>\n"
@@ -68,305 +60,6 @@ function _helpRegen()
 {
   echo -e "Usage: $0 regen -s|--server <name>\n"
   exit 1
-}
-
-function _removeHost()
-{
-  if [ -f "/etc/apache2/sites-available/$serverName.conf" ] && [ -d "$serverDir" ]
-  then
-    # Disabling site
-    $0 suspend -s "$serverName"
-
-    # Revoking and removing ssl cert
-    if [ -f "$serverDir/conf.d/ssl" ]
-    then
-      _removeSSL
-    fi
-
-    echo -e "\nRemoving files..."
-    # Removing files
-    rm -rf "$serverDir"
-    echo "   - Server dir deleted."
-
-    # Deleting apache virtual server
-    rm -f "/etc/apache2/sites-available/$serverName.conf"
-    echo "   - Apache configuration for '$serverName' removed."
-
-    # Reloading php-fpm
-    echo -ne "\nReloading php-fpm.. "
-    service php*-fpm restart
-    echo "Ok."
-
-    # Reloading apache2
-    echo -n "Reloading apache2.. "
-    service apache2 restart
-    echo "Ok."
-  else
-    echo -e "Error: Server not found."
-    exit 1
-  fi
-}
-
-function _addSSL()
-{
-  echo -e "\nGenerating SSL Let's Encrypt Certificate..."
-  echo "   * Setting up web config for Let's Encrypt activation.."
-  echo "<Directory $serverDir/www>
-  Require all granted
-</Directory>
-<VirtualHost *:80>
-  ServerAdmin $adminEmail
-  DocumentRoot $serverDir/www
-
-  ServerName $serverName
-  ServerAlias $serverAlias
-</VirtualHost>" > "/etc/apache2/sites-enabled/$serverName.conf"
-
-  # Reloading apache2
-  echo -n "Reloading apache2.. "
-  service apache2 restart
-  echo "Ok."
-
-  echo "   *** Generating certificate ***"
-  if [ ! -z "$serverAlias" ] # Check if aliases
-  then
-    $letsEncryptExec certonly --webroot --webroot-path "$serverDir/www/" -d "$serverName" -d "$serverAlias"
-  else
-    $letsEncryptExec certonly --webroot --webroot-path "$serverDir/www/" -d "$serverName"
-  fi
-
-  # Removing apache cfg file needed by Let's Encrypt
-  rm "/etc/apache2/sites-enabled/$serverName.conf"
-
-  # Removing temporary files created by Let's Encrypt
-  rm -rf "$serverDir/www/.well-known"
-}
-
-function _removeSSL()
-{
-  echo -e "\nCleaning up SSL certificates..."
-  echo "   - Revoking SSL Let's Encrypt Certificate for '$serverName'..."
-  $letsEncryptExec revoke --cert-path "$letsEncryptDir/live/$serverName/fullchain.pem"
-  echo "   - Removing certificate and renewal configuration for '$serverName'..."
-  rm -rf "$letsEncryptDir/live/$serverName"
-  rm -rf "$letsEncryptDir/archive/$serverName"
-  rm "$letsEncryptDir/renewal/$serverName.conf"
-}
-
-function _addUser() {
-  ftpPassword=$(openssl rand -base64 12)
-
-  # Add an user
-  echo -n "Creating new Unix user.. "
-  useradd "$userName" --gid www-data --create-home --home-dir "$userDir" --system -s /usr/sbin/nologin
-  passwd --lock "$userName" > /dev/null
-  echo "Done."
-
-  # Cleaning user dir
-  rm -f "$userDir"/.??* > /dev/null
-
-  # Create a subdir to know that is a web user
-  mkdir "$userDir"/web.conf
-
-  # Add ftp user
-  echo -ne "Creating ftp user.. "
-  ( echo "$ftpPassword" ; echo "$ftpPassword" ) | pure-pw useradd "$userName" -u "$userName" -g www-data -d "$userDir" > /dev/null
-  pure-pw mkdb
-  service pure-ftpd restart
-  echo "Done."
-
-  # Creating passwd file to keep password
-  echo -e "{\n    \"username\": \"$userName\",\n    \"password\": \"$ftpPassword\"\n}" > "$userDir/web.conf/passwd"
-
-  # Copy readme file to the user root
-  cp readme.default "$userDir"/readme
-
-  # Fixing permissions
-  chown -R "$userName":www-data "$userDir"
-  chmod 550 -R "$userDir"
-  chmod 004 "$userDir"/web.conf
-}
-
-function _removeUser() {
-  # Recursive server remove
-  echo "Recursively removing hosts from user dir.."
-  serverList=($(ls "$userDir" -I "readme" -I "web.conf"))
-
-  for dir in ${serverList[@]}
-  do
-    if [ -f "$userDir/$dir/conf.d/pool.cfg" ]
-    then
-      echo -n "  * $dir found, removing host.. "
-      $0 remove -s $dir > /dev/null
-      echo "Done."
-    else
-      echo "  * /conf.d/pool.cfg not found in dir '$dir'"
-    fi
-  done
-
-  # Removing Unix user
-  echo -ne "\nRemoving Unix user.. "
-  userdel -rf "$userName" 2>/dev/null
-  echo "Done."
-
-  # Removing ftp user
-  echo -n "Removing ftp user.. "
-  pure-pw userdel "$userName"
-  pure-pw mkdb
-  service pure-ftpd restart
-  echo "Done."
-}
-
-function _generateConf() {
-  # Creating apache config file
-  echo -e "\nCreating VirtualHost file in '/etc/apache2/sites-available/'"
-  echo "<Directory $serverDir/www>
-  Options -Indexes +FollowSymLinks +MultiViews
-  AllowOverride All
-  Require all granted
-</Directory>
-<VirtualHost *:80>
-  ServerAdmin $adminEmail
-  DocumentRoot $serverDir/www
-
-  ServerName $serverName
-  ServerAlias $serverAlias
-
-  ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
-
-  if [ $sslSecured == 1 ]
-  then
-    echo -e "\n  <IfModule mod_rewrite.c>
-    RewriteEngine on
-    RewriteCond %{HTTPS} off
-    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
-  </IfModule>
-</VirtualHost>
-<IfModule mod_ssl.c>
-  <VirtualHost *:443>
-    ServerAdmin $adminEmail
-    DocumentRoot $serverDir/www
-
-    ServerName $serverName
-    ServerAlias $serverAlias
-
-    ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
-
-    # Rewrites
-    if [ $hostRedir == 1 ]
-    then
-      echo -e "\n    <IfModule mod_rewrite.c>
-      RewriteEngine on
-      RewriteCond %{HTTP_HOST} !$serverName
-      RewriteRule ^/(.*) http://$serverName/\$1 [R,L]
-    </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
-
-    echo -e "\n    ProxyErrorOverride on
-    <FilesMatch \"\\.php\$\">
-      SetHandler \"proxy:unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
-    </FilesMatch>
-
-    Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\"
-
-    SSLEngine on
-    SSLProtocol all -SSLv2 -SSLv3
-    SSLHonorCipherOrder on
-    SSLCipherSuite 'EECDH+ECDSA+AESGCM EECDH+aRSA+AESGCM EECDH+ECDSA+SHA384 EECDH+ECDSA+SHA256 EECDH+aRSA+SHA384 EECDH+aRSA+SHA256 EECDH+aRSA+RC4 EECDH EDH+aRSA RC4 !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4'
-    SSLCertificateFile $letsEncryptDir/live/$serverName/cert.pem
-    SSLCertificateKeyFile $letsEncryptDir/live/$serverName/privkey.pem
-    SSLCertificateChainFile $letsEncryptDir/live/$serverName/chain.pem
-    SSLOptions +StdEnvVars +ExportCertData
-  </VirtualHost>
-</IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-  else
-    # Rewrites
-    if [ $hostRedir == 1 ]
-    then
-      echo -e "\n  <IfModule mod_rewrite.c>
-      RewriteEngine on
-      RewriteCond %{HTTP_HOST} !^$serverName$
-      RewriteRule ^/(.*) http://$serverName/\$1 [R=301,L]
-    </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
-    fi
-
-    echo -e "\n  ProxyErrorOverride on
-  <FilesMatch \"\\.php\$\">
-    SetHandler \"proxy:unix:/run/php/php-fpm.$serverName.sock|fcgi://localhost/\"
-  </FilesMatch>" >> "/etc/apache2/sites-available/$serverName.conf"
-    echo "</VirtualHost>" >> "/etc/apache2/sites-available/$serverName.conf"
-  fi
-
-  # If chroot symlink to make chroot work
-  if [ $chrootHost == 1 ]
-  then
-    mkdir -p $serverDir$serverDir
-    ln -s ../../../../www/ $serverDir$serverDir/www
-  fi
-
-  # Configuring CGI
-  echo "Creating php-fpm pool for '$serverName'..."
-  echo "[$serverName]
-; Define socket
-listen = /run/php/php-fpm.$serverName.sock
-
-; Define env var for this instance
-env[DOCUMENT_ROOT] = $serverDir/www/" > "$serverDir/conf.d/pool.cfg"
-
-  if [ $chrootHost == 1 ]
-  then
-    echo -e "\n; Chrooting dir
-chroot = $serverDir/
-
-; Default pool settings
-chdir = /www/" >> "$serverDir/conf.d/pool.cfg"
-  else
-    echo -e "\n; Default pool settings
-chdir = /" >> "$serverDir/conf.d/pool.cfg"
-  fi
-
-  echo "user = $userName
-group = www-data
-listen.owner = $userName
-listen.group = www-data
-listen.mode = 0666
-
-pm = ondemand
-pm.max_children = 16
-pm.process_idle_timeout = 8s
-pm.max_requests = 64
-
-; Redirect worker stdout and stderr into main error log. If not set, stdout and
-; stderr will be redirected to /dev/null according to FastCGI specs.
-catch_workers_output = yes
-
-; Pool mix fix
-php_admin_value[opcache.enable] = 0
-
-; Log file
-php_admin_flag[log_errors] = on" >> "$serverDir/conf.d/pool.cfg"
-  if [ $chrootHost == 1 ]
-  then
-    echo "php_admin_value[error_log] = /log/phperror.log
-
-; Restrict access
-php_admin_value[open_basedir]=/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
-  else
-    echo "php_admin_value[error_log] = $serverDir/log/phperror.log
-
-; Restrict access
-php_admin_value[open_basedir]=$serverDir/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
-  fi
-}
-
-function _regenHost() {
-  if [ -f "/etc/apache2/sites-available/$serverName.conf" ]
-  then
-    echo ""
-  else
-    echo -e "Error: Server not found."
-    exit 1
-  fi
 }
 
 # Parsing arguments
@@ -425,7 +118,7 @@ do
       done
 
       # Creating host
-      bash modules/hosts/addHost.sh $userName $serverName $sslSecured $chrootHost $hostRedir
+      bash modules/hosts/addHost.sh "$serverName" "$serverAlias" "$userName" "$sslSecured" "$chrootHost" "$hostRedir"
 
       exit 0
     ;;
@@ -455,118 +148,8 @@ do
         esac
       done
 
-      # Check if there is a server name
-      if [ -z "$serverName" ]
-      then
-        echo "Error: No server name specified. Try '$0 remove --help'"
-        exit 1
-      fi
-
-      # Creating vars
-      serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
-
-      # Removing host
-      _removeHost
-
-      exit 0
-    ;;
-    suspend)
-      while [ ! -z "$1" ]
-      do
-        shift
-        case $1 in
-          -h | --help)
-            _helpSuspend
-          ;;
-          -s | --server)
-            shift
-            if [ ! -z "$1" ]
-            then
-              if [ -z "$serverName" ]
-              then
-                serverName=$1
-              else
-                echo "Error: You can only specify one server name to suspend."
-                exit 1
-              fi
-            else
-              echo "Error: Please specify a server name after -s|--server argument."
-              exit 1
-            fi
-        esac
-      done
-
-      # Check if there is a server name
-      if [ -z "$serverName" ]
-      then
-        echo "Error: No server name specified. Try '$0 remove --help'"
-        exit 1
-      fi
-
-      if [ -f "/etc/apache2/sites-available/$serverName.conf" ] && [ -f "/etc/apache2/sites-enabled/$serverName.conf" ]
-      then
-        # So, disable the vhost
-        a2dissite "$serverName" > /dev/null
-        echo "* Disabled site '$serverName'"
-      else
-        echo "Error: Server not found or already enabled."
-        exit 1
-      fi
-
-      # Reloading apache2
-      echo -n "Reloading apache2.. "
-      service apache2 restart
-      echo "Ok."
-
-      exit 0
-    ;;
-    resume)
-      while [ ! -z "$1" ]
-      do
-        shift
-        case $1 in
-          -h | --help)
-            _helpResume
-          ;;
-          -s | --server)
-            shift
-            if [ ! -z "$1" ]
-            then
-              if [ -z "$serverName" ]
-              then
-                serverName=$1
-              else
-                echo "Error: You can only specify one server name to resume."
-                exit 1
-              fi
-            else
-              echo "Error: Please specify a server name after -s|--server argument."
-              exit 1
-            fi
-        esac
-      done
-
-      # Check if there is a server name
-      if [ -z "$serverName" ]
-      then
-        echo "Error: No server name specified. Try '$0 remove --help'"
-        exit 1
-      fi
-
-      if [ -f "/etc/apache2/sites-available/$serverName.conf" ] && [ ! -f "/etc/apache2/sites-enabled/$serverName.conf" ]
-      then
-        # So, enable the vhost
-        a2ensite "$serverName" > /dev/null
-        echo "* Enabled site '$serverName'"
-        else
-        echo "Error: Server not found or already enabled."
-        exit 1
-      fi
-
-      # Reloading apache2
-      echo -n "Reloading apache2.. "
-      service apache2 restart
-      echo "Ok."
+      # Remove host
+      bash modules/hosts/delHost.sh "$serverName"
 
       exit 0
     ;;
@@ -591,25 +174,8 @@ do
         esac
       done
 
-      # Check if there is an user name
-      if [ -z "$userName" ]
-      then
-        echo "Error: No user name specified. Try '$0 userban --help'"
-        exit 1
-      fi
-
-      # Creating vars
-      userDir=$userBasePath/${userName}${userDirSuffix}
-      userName=${userName}${userNameSuffix}
-
-      if [ ! -d "$userDir/web.conf" ]
-      then
-        echo "Error: User not found or not www user !"
-        exit 1
-      fi
-
       # Remove user and host recursively
-      _removeUser
+      bash modules/users/delUser.sh "$userName"
 
       exit 0
     ;;
@@ -639,17 +205,8 @@ do
         esac
       done
 
-      # Check if there is a server name
-      if [ -z "$serverName" ]
-      then
-        echo "Error: No server name specified. Try '$0 regen --help'"
-        exit 1
-      fi
-
-      serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
-
       # Launch regeneration
-      _regenHost
+      bash modules/hosts/regenHost.sh "$serverName"
 
       exit 0
     ;;
