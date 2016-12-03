@@ -126,7 +126,8 @@ then
   chmod 550 "$serverDir" -R
   chmod 000 "$serverDir/conf.d" -R
 
-  chmod 750 "$serverDir/www"
+  chmod 750 "$serverDir/www" -R
+  chmod 750 "$serverDir/var/lib/php/sessions" "$serverDir/tmp"
 
   chown "$userName:www-data" "$serverDir" -R
   echo "Done"
