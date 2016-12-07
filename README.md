@@ -1,5 +1,6 @@
 # wSm (for web Server manager)
-Simple cli utility to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt.
+<img src="docs/logo-b.png" alt="Entropi Logo">
+> Simple cli utility to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt.
 
 # Features:
   - Create/Remove virtual hosts very quickly (~3s without ssl).
@@ -8,6 +9,7 @@ Simple cli utility to create apache virtual servers, with jail and ability to au
   - Create trusted ssl certificates easily with Let's Encrypt.
   - Auto jail all virtual hosts, with a disable option '--no-chroot'.
   - Default webserver/hosts file/readme personalisation.
+  - [Web Panel](https://github.com/Thecakeisgit/wSmP) (In dev :D)
 
 # Dependencies:
   - apache2
