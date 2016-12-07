@@ -23,7 +23,7 @@ ServerAlias $serverAlias
 
 # Reloading apache2
 echo -n "Reloading apache2.. "
-service apache2 restart
+service apache2 reload
 echo "Ok."
 
 echo "   *** Generating certificate ***"

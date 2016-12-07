@@ -82,7 +82,7 @@ then
   if [ "$chrootHost" == 1 ]
   then
     echo "Copying files to setup chroot.."
-    mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev,lib/x86_64-linux-gnu}
+    mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev}
     echo -n " * Local time.. "
     cp /etc/localtime "$serverDir"/etc
     cp -r /usr/share/zoneinfo "$serverDir"/usr/share
@@ -101,7 +101,7 @@ then
     echo "Ok"
 
     echo -n "   -> copying libs for 'php' and php-fpm.. "
-    fileArray=$(ldd /usr/bin/php7.0 /usr/bin/php5.6 /usr/sbin/php-fpm7.0 /usr/sbin/php-fpm5.6 2>/dev/null | awk 'NF == 4 {print $3}; NF == 2 {print $1}' | sort -u)
+    fileArray=$(ls /lib/*/libnss_dns.so.2)
 
     for file in $fileArray
     do
@@ -126,8 +126,7 @@ then
   chmod 550 "$serverDir" -R
   chmod 000 "$serverDir/conf.d" -R
 
-  chmod 750 "$serverDir/www" -R
-  chmod 750 "$serverDir/var/lib/php/sessions" "$serverDir/tmp"
+  chmod 750 "$serverDir/"{var/lib/php/sessions,tmp,log,www} -R
 
   chown "$userName:www-data" "$serverDir" -R
   echo "Done"

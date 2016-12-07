@@ -14,7 +14,7 @@ passwd --lock "$userName" > /dev/null
 echo "Done."
 
 # Cleaning user dir
-rm -f "$userDir"/.??* > /dev/null
+rm -f "$userDir"/*
 
 # Create a subdir to know that is a web user
 mkdir "$userDir"/web.conf

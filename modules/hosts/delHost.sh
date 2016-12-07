@@ -19,15 +19,17 @@ serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
 
 if [ -f "/etc/apache2/sites-available/$serverName.conf" ] && [ -d "$serverDir" ]
 then
+  echo "Found '$serverName' in '$serverDir'.."
+
   # Disabling site
   echo -ne "\n * Disabling site '$serverName'.. "
   a2dissite "$serverName" > /dev/null
   echo "Ok"
 
   # Revoking and removing ssl cert
-  if [ -f "$serverDir/conf.d/ssl" ]
+  if [ -d "$letsEncryptDir/live/$serverName/" ]
   then
-    bash modules/hosts/addHTTPs.sh "$serverName"
+    bash modules/hosts/delHTTPs.sh "$serverName"
   fi
 
   echo -e "\nRemoving files..."
