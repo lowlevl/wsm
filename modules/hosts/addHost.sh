@@ -100,7 +100,7 @@ then
     cp /etc/services "$serverDir"/etc/
     echo "Ok"
 
-    echo -n "   -> copying libs for 'php' and php-fpm.. "
+    echo -n "   -> Copying libs for 'php' and php-fpm.. "
     fileArray=$(ls /lib/*/libnss_dns.so.2)
 
     for file in $fileArray
@@ -109,6 +109,15 @@ then
       [ ! -d "$serverDir$dirName" ] && mkdir -p "$serverDir$dirName" || :
       cp $file "$serverDir$dirName"
     done
+    echo "Ok"
+
+    echo -n "   -> Copying ca-certificates to make openssl work in chroot.. "
+    certDir=$(php -r "echo openssl_get_cert_locations()['default_cert_dir'];" 2>/dev/null)
+
+    mkdir -p $serverDir$certDir /usr/share/ca-certificates/
+
+    cp $certDir/* $serverDir$certDir -R
+    cp /usr/share/ca-certificates/* $serverDir/usr/share/ca-certificates/ -R
     echo "Ok"
 
     echo -n "   -> Creating symlink to make php-fpm work.. "
