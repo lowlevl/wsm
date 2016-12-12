@@ -33,7 +33,7 @@ then
 fi
 
 # Generating vars
-userDir="$userBasePath/${userName}${userDirSuffix}"
+userDir="$userBasePath/${userName}"
 userName="${userName}${userNameSuffix}"
 serverDir="$userDir/$serverName"
 
