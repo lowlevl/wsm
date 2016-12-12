@@ -1,4 +1,4 @@
-# wSm (for web Server manager)
+# wSm (for web Server manager) [![MIT Licence](https://badges.frapsoft.com/os/mit/mit.svg?v=103)](https://opensource.org/licenses/mit-license.php) [![GitHub version](https://badge.fury.io/gh/Thecakeisgit%2FwSm.svg)](https://badge.fury.io/gh/Thecakeisgit%2FwSm)
 <img src="docs/logo-b.png" alt="Entropi Logo">
 > Simple cli utility to create apache virtual servers, with jail and ability to auto create SSL Certificate with Let's Encrypt.
 
