@@ -2,12 +2,10 @@
 
 # Parse config from argument
 configFile="$1"
-if [ -f $configFile ]
-then
+if [ -f $configFile ]; then
   while IFS='= ' read varName content
   do
-    if [[ ! $varName =~ ^\ *# && -n $varName ]]
-    then
+    if [[ ! $varName =~ ^\ *# && -n $varName ]]; then
       content=$(sed 's/\s*$//g' <<< $content)  # Del trailing spaces
       content=$(sed 's/\s*#/#/g' <<< $content) # Del trailing spaces before '#'
       content=$(sed 's/#.*//' <<< $content)    # Del all after '#'

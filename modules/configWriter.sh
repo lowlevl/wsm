@@ -5,13 +5,11 @@ configFile="$1"
 echo -n "" > "$configFile"
 shift
 
-if [ "$1" != "" ]
-then
+if [ "$1" != "" ]; then
   while [ "$#" -gt 0 ]
   do
     varName="$1"
-    if [ ! -z "${!varName}" ]
-    then
+    if [ ! -z "${!varName}" ]; then
       echo "$varName=${!varName}" >> "$configFile"
     fi
     shift

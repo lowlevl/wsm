@@ -12,8 +12,7 @@ hostRedir=0
 serverName="$1"
 
 # Check if there is a server name
-if [ -z "$serverName" ]
-then
+if [ -z "$serverName" ]; then
   echo "Error: No server name specified. Try '$0 regen --help'"
   exit 1
 fi
@@ -22,8 +21,7 @@ serverAlias=$(grep ServerAlias /etc/apache2/sites-available/$serverName.conf | s
 serverDir=$(find "$userBasePath"/*/ -maxdepth 1 -name "$serverName")
 userName=$(basename $(dirname $serverDir))
 
-if [ -f "/etc/apache2/sites-available/$serverName.conf" ]
-then
+if [ -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   echo " ~ Regen started ~"
 
   echo -n "  -> Moving files in backup dir.. "

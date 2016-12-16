@@ -29,8 +29,7 @@ echo "<Directory $serverDir/www>
 
   ErrorLog $serverDir/log/error.log" > "/etc/apache2/sites-available/$serverName.conf"
 
-if [ "$sslSecured" == 1 ]
-then
+if [ "$sslSecured" == 1 ]; then
   echo -e "\n  <IfModule mod_rewrite.c>
     RewriteEngine on
     RewriteCond %{HTTPS} off
@@ -48,8 +47,7 @@ then
     ErrorLog $serverDir/log/error.log" >> "/etc/apache2/sites-available/$serverName.conf"
 
   # Rewrites
-  if [ "$hostRedir" == 1 ]
-  then
+  if [ "$hostRedir" == 1 ]; then
     echo -e "\n    <IfModule mod_rewrite.c>
       RewriteEngine on
       RewriteCond %{HTTP_HOST} !$serverName
@@ -76,8 +74,7 @@ then
 </IfModule>" >> "/etc/apache2/sites-available/$serverName.conf"
 else
   # Rewrites
-  if [ "$hostRedir" == 1 ]
-  then
+  if [ "$hostRedir" == 1 ]; then
     echo -e "\n  <IfModule mod_rewrite.c>
     RewriteEngine on
     RewriteCond %{HTTP_HOST} !^$serverName$
@@ -101,8 +98,7 @@ listen = /run/php/php-fpm.$serverName.sock
 ; Define env var for this instance
 env[DOCUMENT_ROOT] = $serverDir/www/" > "$serverDir/conf.d/pool.cfg"
 
-if [ "$chrootHost" == 1 ]
-then
+if [ "$chrootHost" == 1 ]; then
   echo -e "\n; Chrooting dir
 chroot = $serverDir/
 
@@ -133,8 +129,7 @@ php_admin_value[opcache.enable] = 0
 
 ; Log file
 php_admin_flag[log_errors] = on" >> "$serverDir/conf.d/pool.cfg"
-if [ "$chrootHost" == 1 ]
-then
+if [ "$chrootHost" == 1 ]; then
   echo "php_admin_value[error_log] = /log/phperror.log
 
 ; Restrict access

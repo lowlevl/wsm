@@ -7,8 +7,7 @@ source modules/configReader.sh "config.cfg"
 userName="$1"
 
 # Check if there is an user name
-if [ -z "$userName" ]
-then
+if [ -z "$userName" ]; then
   echo "Error: No user name specified. Try '$0 userban --help'"
   exit 1
 fi
@@ -17,8 +16,7 @@ fi
 userDir=$userBasePath/${userName}${userDirSuffix}
 userName=${userName}${userNameSuffix}
 
-if [ ! -d "$userDir/web.conf" ]
-then
+if [ ! -d "$userDir/web.conf" ]; then
   echo "Error: User not found or not www user !"
   exit 1
 fi
@@ -29,8 +27,7 @@ serverList=($(ls "$userDir" -I "readme" -I "web.conf"))
 
 for serverName in ${serverList[@]}
 do
-  if [ -f "$userDir/$serverName/conf.d/pool.cfg" ]
-  then
+  if [ -f "$userDir/$serverName/conf.d/pool.cfg" ]; then
     echo -n "  * $serverName found, removing host.. "
     bash modules/hosts/delHost.sh "$serverName" > /dev/null
     echo "Done."

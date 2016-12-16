@@ -27,8 +27,7 @@ service apache2 reload
 echo "Ok."
 
 echo "   *** Generating certificate ***"
-if [ ! -z "$serverAlias" ] # Check if aliases
-then
+if [ ! -z "$serverAlias" ] # Check if aliases; then
   $letsEncryptExec certonly --webroot --webroot-path "$serverDir/www/" -d "$serverName" -d "$serverAlias"
 else
   $letsEncryptExec certonly --webroot --webroot-path "$serverDir/www/" -d "$serverName"

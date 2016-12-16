@@ -13,21 +13,18 @@ chrootHost="$5"
 hostRedir="$6"
 
 # Check if there is a server name
-if [ -z "$serverName" ]
-then
+if [ -z "$serverName" ]; then
   echo "Error: No server name specified. Try '$0 add --help'"
   exit 1
 fi
 
 # Check if there is an user name
-if [ -z "$userName" ]
-then
+if [ -z "$userName" ]; then
   echo "Error: No user name specified. Try '$0 add --help'"
   exit 1
 fi
 
-if [ "$hostRedir" == 1 ] && [ -z "$serverAlias" ]
-then
+if [ "$hostRedir" == 1 ] && [ -z "$serverAlias" ]; then
   echo "Error: You can't request redirecting all aliases to domain, there isn't any alias."
   exit 1
 fi
@@ -38,19 +35,16 @@ userName="${userName}${userNameSuffix}"
 serverDir="$userDir/$serverName"
 
 # If server is not configured, launch creation
-if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]
-then
+if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
 
   # Check for userBasePath dir
-  if [ ! -d "$userBasePath" ]
-  then
+  if [ ! -d "$userBasePath" ]; then
     echo "Info: The base dir was not found, creating."
     mkdir -p "$userBasePath"
     chmod 555 "$userBasePath"
   fi
 
-  if [ ! -d "$userDir/web.conf" ]
-  then
+  if [ ! -d "$userDir/web.conf" ]; then
     bash modules/users/addUser.sh "$userName" "$userDir"
   fi
 
@@ -70,8 +64,7 @@ then
   cp -R web.default/* "$serverDir/www/"
 
   # Pregenerating certificate if needed
-  if [ "$sslSecured" == 1 ]
-  then
+  if [ "$sslSecured" == 1 ]; then
     bash modules/hosts/addHTTPs.sh "$serverName" "$serverAlias" "$serverDir"
   fi
 
@@ -79,8 +72,7 @@ then
   bash modules/config/genConfig.sh "$serverName" "$serverAlias" "$serverDir" "$userName" "$sslSecured" "$chrootHost" "$hostRedir"
 
   # PHP requirements in chroot
-  if [ "$chrootHost" == 1 ]
-  then
+  if [ "$chrootHost" == 1 ]; then
     echo "Copying files to setup chroot.."
     mkdir -p "$serverDir"/{etc,usr/share,var/lib/php/sessions,tmp,dev}
     echo -n " * Local time.. "
