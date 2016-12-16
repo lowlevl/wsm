@@ -128,7 +128,7 @@ then
   fi
 
   # Keeping install parameters in conf.d dir
-  touch "$serverDir/conf.d/install.cfg"
+  source modules/configWriter.sh "$serverDir/conf.d/install.cfg" "serverAlias" "hostRedir" "sslSecured" "chrootHost"
 
   # Fix permissions
   echo -ne "\nFixing permissions for better security.. "

@@ -31,12 +31,12 @@ then
   mv "$serverDir"/www/* "$backupDir/$serverName"
   echo "Ok"
 
-  echo -n "  -> Removing host.. "
-  bash modules/hosts/delHost.sh "$serverName" > /dev/null
-  echo "Ok"
-
   echo -n "  -> Loading install.cfg.. "
   [ -f "$serverDir/conf.d/install.cfg" ] && source modules/configReader.sh "$serverDir/conf.d/install.cfg"
+  echo "Ok"
+
+  echo -n "  -> Removing host.. "
+  bash modules/hosts/delHost.sh "$serverName" > /dev/null
   echo "Ok"
 
   echo -n "  -> Creating host.. "
