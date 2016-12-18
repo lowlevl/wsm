@@ -7,6 +7,7 @@ source modules/configReader.sh "config.cfg"
 chrootHost=1
 sslSecured=0
 hostRedir=0
+serverAlias=
 
 # Getting parameters
 serverName="$1"
