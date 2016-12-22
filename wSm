@@ -26,7 +26,7 @@ function _help()
   echo "  remove:         Remove an existing virtual server."
   echo "  regen:          Fully regenerate virtual server config and dirs."
   echo -e "\nSpecial:"
-  echo "  userban:        Remove user and delete all his hosts."
+  echo "  userwipe:       Remove user and delete all his hosts."
   exit 1
 }
 
@@ -50,9 +50,9 @@ function _helpRemove()
   exit 1
 }
 
-function _helpUserban()
+function _helpUserwipe()
 {
-  echo -e "Usage: $0 kickuser -u|--user <name>\n"
+  echo -e "Usage: $0 userwipe -u|--user <name>\n"
   exit 1
 }
 
@@ -157,13 +157,13 @@ do
 
       exit 0
     ;;
-    userban)
+    userwipe)
       while [ ! -z "$1" ]
       do
         shift
         case $1 in
           -h | --help)
-            _helpUserban
+            _helpUserwipe
           ;;
           -u | --user)
             shift
@@ -188,7 +188,7 @@ do
         shift
         case $1 in
           -h | --help)
-            _helpResume
+            _helpRegen
           ;;
           -s | --server)
             shift

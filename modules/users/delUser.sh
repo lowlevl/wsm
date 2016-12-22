@@ -8,7 +8,7 @@ userName="$1"
 
 # Check if there is an user name
 if [ -z "$userName" ]; then
-  echo "Error: No user name specified. Try '$0 userban --help'"
+  echo "Error: No user name specified. Try '$0 userwipe --help'"
   exit 1
 fi
 
