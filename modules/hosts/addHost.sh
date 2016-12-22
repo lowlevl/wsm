@@ -12,6 +12,8 @@ sslSecured="$4"
 chrootHost="$5"
 hostRedir="$6"
 
+phpVer="$7"
+
 # Check if there is a server name
 if [ -z "$serverName" ]; then
   echo "Error: No server name specified. Try '$0 add --help'"
@@ -36,6 +38,18 @@ serverDir="$userDir/$serverName"
 
 # If server is not configured, launch creation
 if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
+
+  # Check if phpVer is valid
+  if [ -z "$phpVer" ]; then
+    phpVer="$phpDefVer"
+  fi
+
+  if [ "$phpVer" != "5.6" ] && [ "$phpVer" != "7.0" ]; then
+    echo "Invalid php version ('$phpVer'), only '5.6' and '7.0' are supported.."
+    exit 1
+  fi
+
+  echo "Using php version '$phpVer'.."
 
   # Check for userBasePath dir
   if [ ! -d "$userBasePath" ]; then
@@ -103,10 +117,10 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     done
     echo "Ok"
 
-    echo -n "   -> Copying ca-certificates to make openssl work in chroot.. "
+    echo -n "   -> Copying certs and ca-certificates to make openssl work in chroot.. "
     certDir=$(php -r "echo openssl_get_cert_locations()['default_cert_dir'];" 2>/dev/null)
 
-    mkdir -p $serverDir$certDir /usr/share/ca-certificates/
+    mkdir -p $serverDir$certDir $serverDir/usr/share/ca-certificates/
 
     cp $certDir/* $serverDir$certDir -R
     cp /usr/share/ca-certificates/* $serverDir/usr/share/ca-certificates/ -R
@@ -120,7 +134,7 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   fi
 
   # Keeping install parameters in conf.d dir
-  source modules/configWriter.sh "$serverDir/conf.d/install.cfg" "serverAlias" "hostRedir" "sslSecured" "chrootHost"
+  source modules/configWriter.sh "$serverDir/conf.d/install.cfg" "serverAlias" "hostRedir" "sslSecured" "chrootHost" "phpVer"
 
   # Fix permissions
   echo -ne "\nFixing permissions for better security.. "
@@ -132,6 +146,11 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   chown "$userName:www-data" "$serverDir" -R
   echo "Done"
 
+
+  # Symlinking the good php version
+  echo -ne "\n * Creating symlink for php$phpVer.. "
+  ln -s "./pool.cfg" "$serverDir"/conf.d/pool$phpVer.cfg
+  echo "Ok"
 
   # Enabling site
   echo -ne "\n * Enabling site '$serverName'.. "

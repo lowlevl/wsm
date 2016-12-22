@@ -39,7 +39,7 @@ if [ -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   echo "Ok"
 
   echo -n "  -> Creating host.. "
-  bash modules/hosts/addHost.sh "$serverName" "$serverAlias" "$userName" "$sslSecured" "$chrootHost" "$hostRedir" > /dev/null
+  bash modules/hosts/addHost.sh "$serverName" "$serverAlias" "$userName" "$sslSecured" "$chrootHost" "$hostRedir" "$phpVer" > /dev/null
   echo "Ok"
 
   echo -n "  -> Recovering backup.. "

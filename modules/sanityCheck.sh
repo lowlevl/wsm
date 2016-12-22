@@ -70,28 +70,32 @@ if [ ! -f .saneInstall ]; then
     echo "Ok"
   fi
 
-  # PHP
-  echo -ne "\n  * PHP install status.. "
-  if ! dpkg -l | grep -e '^ii  php7.0 ' -e '^ii  php5.6 ' > /dev/null; then
-    echo "Failed"
-    exit 1
-  else
-    echo "Ok"
-  fi
-
   # php-fpm
   echo -n "    [cgi] php*-fpm install status.. "
-  if ! dpkg -l | grep '^ii  php.*-fpm ' > /dev/null; then
+  if ! dpkg -l | grep -e '^ii  php5.6-fpm ' -e '^ii  php7.0-fpm '> /dev/null; then
     echo "Failed"
     exit 1
   else
     echo "Ok"
-    echo -n "       -> php*-fpm conf.. "
-    if ! grep -qF "include=$userBasePath/*/*/conf.d/pool.cfg" /etc/php/*/fpm/php-fpm.conf; then
-      echo "Warning, auto-configured."
-      sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/conf.d/pool.cfg" /etc/php/*/fpm/php-fpm.conf
-    else
-      echo "Ok"
+
+    if [ -f /etc/php/5.6/fpm/php-fpm.conf ]; then
+      echo -n "       -> php5.6-fpm conf.. "
+      if ! grep -qF "include=$userBasePath/*/*/conf.d/pool5.6.cfg" /etc/php/5.6/fpm/php-fpm.conf; then
+        echo "Warning, auto-configured."
+        sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/conf.d/pool5.6.cfg" /etc/php/5.6/fpm/php-fpm.conf
+      else
+        echo "Ok"
+      fi
+    fi
+
+    if [ -f /etc/php/7.0/fpm/php-fpm.conf ]; then
+      echo -n "       -> php7.0-fpm conf.. "
+      if ! grep -qF "include=$userBasePath/*/*/conf.d/pool7.0.cfg" /etc/php/7.0/fpm/php-fpm.conf; then
+        echo "Warning, auto-configured."
+        sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/conf.d/pool7.0.cfg" /etc/php/7.0/fpm/php-fpm.conf
+      else
+        echo "Ok"
+      fi
     fi
   fi
 

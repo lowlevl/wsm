@@ -101,6 +101,16 @@ do
             fi
           ;;
 
+          -p | --php)
+            shift
+            if [ ! -z "$1" ]; then
+              phpVer=$1
+            else
+              echo "Error: Please specify a php version after -p|--php argument."
+              exit 1
+            fi
+          ;;
+
           # Options
           --ssl)
             sslSecured=1
@@ -114,7 +124,7 @@ do
       done
 
       # Creating host
-      bash modules/hosts/addHost.sh "$serverName" "$serverAlias" "$userName" "$sslSecured" "$chrootHost" "$hostRedir"
+      bash modules/hosts/addHost.sh "$serverName" "$serverAlias" "$userName" "$sslSecured" "$chrootHost" "$hostRedir" "$phpVer"
 
       exit 0
     ;;
