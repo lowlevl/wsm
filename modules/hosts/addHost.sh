@@ -44,8 +44,8 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     phpVer="$phpDefVer"
   fi
 
-  if [ "$phpVer" != "5.6" ] && [ "$phpVer" != "7.0" ]; then
-    echo "Invalid php version ('$phpVer'), only '5.6' and '7.0' are supported.."
+  if [ "$phpVer" != "5.6" ] && [ "$phpVer" != "7.0" ] && [ "$phpVer" != "7.1" ]; then
+    echo "Invalid php version ('$phpVer'), only '5.6', '7.0' and '7.1' are supported.."
     exit 1
   fi
 

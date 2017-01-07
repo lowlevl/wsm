@@ -72,7 +72,7 @@ if [ ! -f .saneInstall ]; then
 
   # php-fpm
   echo -n "    [cgi] php*-fpm install status.. "
-  if ! dpkg -l | grep -e '^ii  php5.6-fpm ' -e '^ii  php7.0-fpm '> /dev/null; then
+  if ! dpkg -l | grep -e '^ii  php5.6-fpm ' -e '^ii  php7.0-fpm ' -e '^ii  php7.1-fpm ' > /dev/null; then
     echo "Failed"
     exit 1
   else
@@ -97,6 +97,16 @@ if [ ! -f .saneInstall ]; then
         echo "Ok"
       fi
     fi
+
+    if [ -f /etc/php/7.1/fpm/php-fpm.conf ]; then
+      echo -n "       -> php7.1-fpm conf.. "
+      if ! grep -qF "include=$userBasePath/*/*/conf.d/pool7.1.cfg" /etc/php/7.1/fpm/php-fpm.conf; then
+        echo "Warning, auto-configured."
+        sed -i -e "s/.*include=/;&/" -e "/;include=/a include=$userBasePath/*/*/conf.d/pool7.1.cfg" /etc/php/7.1/fpm/php-fpm.conf
+      else
+        echo "Ok"
+      fi
+    fi
   fi
 
   # letsencrypt binary
@@ -110,7 +120,7 @@ if [ ! -f .saneInstall ]; then
 
   # letsencrypt dir
   echo -ne "       -> letsencrypt directory presence.. "
-  if [ ! -d "$letsEncryptDir" ]; then
+  if [ "$letsEncryptDir" != "/etc/letsencrypt" ] && [ ! -d "$letsEncryptDir" ]; then
     echo "Failed"
     exit 1
   else

@@ -32,7 +32,7 @@ function _help()
 
 function _helpAdd()
 {
-  echo -e "Usage: $0 add -s|--server <servername> -u|--user <username> [-p|--php <5.6|7.0>] [options]\n"
+  echo -e "Usage: $0 add -s|--server <servername> -u|--user <username> [-p|--php <5.6|7.0|7.1>] [options]\n"
   echo "Options:"
   echo "  --ssl:          If specified, a Let's Encrypt certificate will be"
   echo "                  generated and will be applied to the virtual server"
