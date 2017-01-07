@@ -27,7 +27,7 @@ if [ -f "/etc/apache2/sites-available/$serverName.conf" ]; then
 
   echo -n "  -> Moving files in backup dir.. "
   mkdir -p "$backupDir/$serverName"
-  mv "$serverDir"/www/* "$backupDir/$serverName"
+  mv "$serverDir"/www/* "$backupDir/$serverName" 2> /dev/null
   echo "Ok"
 
   echo -n "  -> Loading install.cfg.. "
@@ -44,7 +44,7 @@ if [ -f "/etc/apache2/sites-available/$serverName.conf" ]; then
 
   echo -n "  -> Recovering backup.. "
   rm -rf "$serverDir"/www/*
-  mv "$backupDir/$serverName"/* "$serverDir/www/"
+  mv "$backupDir/$serverName"/* "$serverDir/www/" 2> /dev/null
   rm -rf "$backupDir/$serverName"
   echo "Ok"
 else

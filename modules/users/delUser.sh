@@ -38,11 +38,12 @@ done
 
 # Removing Unix user
 echo -ne "\nRemoving Unix user.. "
-userdel -rf "$userName" 2>/dev/null
+userdel "$userName" 2>/dev/null
+rm -rf "$userDir"
 echo "Done."
 
-# Removing ftp user
-echo -n "Removing ftp user.. "
+# Removing Ftp user
+echo -n "Removing Ftp user.. "
 pure-pw userdel "$userName"
 pure-pw mkdb
 service pure-ftpd restart

@@ -55,7 +55,7 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   if [ ! -d "$userBasePath" ]; then
     echo "Info: The base dir was not found, creating."
     mkdir -p "$userBasePath"
-    chmod 555 "$userBasePath"
+    chmod 711 "$userBasePath"
   fi
 
   if [ ! -d "$userDir/web.conf" ]; then
@@ -130,7 +130,6 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     mkdir -p "$serverDir$serverDir"
     ln -s ../../../../www/ "$serverDir$serverDir"/www
     echo "Ok"
-
   fi
 
   # Keeping install parameters in conf.d dir
@@ -138,17 +137,22 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
 
   # Fix permissions
   echo -ne "\nFixing permissions for better security.. "
-  chmod 550 "$serverDir" -R
+  chmod 510 "$serverDir" -R
   chmod 000 "$serverDir/conf.d" -R
 
-  chmod 750 "$serverDir/"{var/lib/php/sessions,tmp,log,www} -R
+  if [ "$chrootHost" == 1 ]; then
+    chmod 700 "$serverDir/"{var/lib/php/sessions,tmp,log} -R
+  else
+    chmod 700 "$serverDir"/log -R
+  fi
+
+  chmod 750 "$serverDir"/www -R
 
   chown "$userName:www-data" "$serverDir" -R
   echo "Done"
 
-
   # Symlinking the good php version
-  echo -ne "\n * Creating symlink for php$phpVer.. "
+  echo -ne "\n * Creating symlink for php$phpVer-fpm.. "
   ln -s "./pool.cfg" "$serverDir"/conf.d/pool$phpVer.cfg
   echo "Ok"
 
