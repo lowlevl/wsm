@@ -3,7 +3,7 @@
 source modules/configReader.sh "config.cfg"
 
 # If check not already passed, execute it
-if [ ! -f .saneInstall ]; then
+if [ ! -d "$userBasePath"/conf.d/ ]; then
   # Check for installed dependencies
   echo "Verifying system to find if the script can be executed.."
 
@@ -127,7 +127,9 @@ if [ ! -f .saneInstall ]; then
     echo "Ok"
   fi
 
-  touch .saneInstall
+  # Create dir to make the script know that system is sane.
+  mkdir -p "$userBasePath"/conf.d
+  chmod 0 -R "$userBasePath"/conf.d
 
   echo -e "\nEverything OK."
   echo "Now you can retype your command."

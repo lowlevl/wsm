@@ -117,18 +117,23 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     done
     echo "Ok"
 
-    echo -n "   -> Copying certs and ca-certificates to make openssl work in chroot.. "
+    echo -n "   -> Copying certs and ca to make openssl work in chroot.. "
     certDir=$(php -r "echo openssl_get_cert_locations()['default_cert_dir'];" 2>/dev/null)
 
-    mkdir -p $serverDir$certDir $serverDir/usr/share/ca-certificates/
+    mkdir -p $serverDir$certDir
 
     cp $certDir/* $serverDir$certDir -R
-    cp /usr/share/ca-certificates/* $serverDir/usr/share/ca-certificates/ -R
     echo "Ok"
 
-    echo -n "   -> Creating symlink to make php-fpm work.. "
+    echo -n "   -> Creating symlinks to make php-fpm work.. "
     mkdir -p "$serverDir$serverDir"
     ln -s ../../../../www/ "$serverDir$serverDir"/www
+
+    echo "Ok"
+
+    echo -n "    + cUrl fix."
+
+    ln -s ../../../$certDir/ca-certificates.crt "$serverDir"/etc/ssl/certs/ca-certificates.crt
     echo "Ok"
   fi
 
@@ -138,7 +143,7 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
   # Fix permissions
   echo -ne "\nFixing permissions for better security.. "
   chmod 510 "$serverDir" -R
-  chmod 000 "$serverDir/conf.d" -R
+  chmod 0 "$serverDir/conf.d" -R
 
   if [ "$chrootHost" == 1 ]; then
     chmod 700 "$serverDir/"{var/lib/php/sessions,tmp,log} -R

@@ -40,4 +40,4 @@ cp readme.default "$userDir"/readme
 # Fixing permissions
 chown -R "$userName":www-data "$userDir"
 chmod 510 -R "$userDir"
-chmod 000 "$userDir"/web.conf
+chmod 0 "$userDir"/web.conf
