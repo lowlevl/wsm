@@ -132,7 +132,7 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     echo "Ok"
 
     echo -n "    + cUrl fix."
-
+    mkdir -p "$serverDir"/etc/ssl/certs/
     ln -s ../../../$certDir/ca-certificates.crt "$serverDir"/etc/ssl/certs/ca-certificates.crt
     echo "Ok"
   fi
