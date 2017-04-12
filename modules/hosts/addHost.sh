@@ -92,6 +92,7 @@ if [ ! -f "/etc/apache2/sites-available/$serverName.conf" ]; then
     echo -n " * Local time.. "
     cp /etc/localtime "$serverDir"/etc
     cp -r /usr/share/zoneinfo "$serverDir"/usr/share
+    cp -r /usr/share/php "$serverDir"/usr/share
     echo "Ok"
 
     echo " * System files.."

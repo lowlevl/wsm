@@ -133,10 +133,10 @@ if [ "$chrootHost" == 1 ]; then
   echo "php_admin_value[error_log] = /log/phperror.log
 
 ; Restrict access
-php_admin_value[open_basedir]=/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
+php_admin_value[open_basedir]=/www:/tmp:/usr/share/php" >> "$serverDir/conf.d/pool.cfg"
 else
   echo "php_admin_value[error_log] = $serverDir/log/phperror.log
 
 ; Restrict access
-php_admin_value[open_basedir]=$serverDir/www:/tmp" >> "$serverDir/conf.d/pool.cfg"
+php_admin_value[open_basedir]=$serverDir/www:/tmp:/usr/share/php" >> "$serverDir/conf.d/pool.cfg"
 fi
