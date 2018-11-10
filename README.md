@@ -23,3 +23,9 @@ Apache Mods:
   - proxy_fcgi
   - headers
   - ssl
+
+# Troubleshooting:
+  - child 9916 said into stderr: "php-fpm: pool www.example.com: relocation error: /lib/x86_64-linux-gnu/libnss_dns.so.2: symbol __res_maybe_init version GLIBC_PRIVATE not defined in file libc.so.6 with link time reference"
+    You need to update the embedded libnss_dns.so.2 of your web hosts.
+    $ sudo tee /home/web/*/*/lib/i386-linux-gnu/libnss_dns.so.2 < /lib/i386-linux-gnu/libnss_dns.so.2 > /dev/null
+    $ sudo tee /home/web/*/*/lib/x86_64-linux-gnu/libnss_dns.so.2 < /lib/x86_64-linux-gnu/libnss_dns.so.2 > /dev/null
